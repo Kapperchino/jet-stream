@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "github.com/Jille/raft-grpc-example/proto";
+option go_package = "github.com/Kapperchino/jet/proto";
 
 service Example {
 	rpc AddWord(AddWordRequest) returns (AddWordResponse) {}

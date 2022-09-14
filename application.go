@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	pb "github.com/Jille/raft-grpc-example/proto"
-	"github.com/Jille/raft-grpc-leader-rpc/rafterrors"
+	pb "github.com/Kapperchino/jet/proto"
+	"github.com/Kapperchino/jet-leader-rpc/rafterrors"
 	"github.com/hashicorp/raft"
 )
 
@@ -84,6 +84,7 @@ func (s *snapshot) Release() {
 type rpcInterface struct {
 	wordTracker *wordTracker
 	raft        *raft.Raft
+	pb.UnimplementedExampleServer
 }
 
 func (r rpcInterface) AddWord(ctx context.Context, req *pb.AddWordRequest) (*pb.AddWordResponse, error) {
