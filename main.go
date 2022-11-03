@@ -44,16 +44,16 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	wt := &wordTracker{}
+	nodeState := &nodeState{}
 
-	r, tm, err := NewRaft(ctx, *raftId, *myAddr, wt)
+	r, tm, err := NewRaft(ctx, *raftId, *myAddr, nodeState)
 	if err != nil {
 		log.Fatalf("failed to start raft: %v", err)
 	}
 	s := grpc.NewServer()
 	pb.RegisterExampleServer(s, &rpcInterface{
-		wordTracker: wt,
-		raft:        r,
+		nodeState: nodeState,
+		raft:      r,
 	})
 	tm.Register(s)
 	leaderhealth.Setup(r, s, []string{"Example"})

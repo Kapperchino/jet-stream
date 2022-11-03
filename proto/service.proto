@@ -3,22 +3,64 @@ syntax = "proto3";
 option go_package = "github.com/Kapperchino/jet/proto";
 
 service Example {
-	rpc AddWord(AddWordRequest) returns (AddWordResponse) {}
-	rpc GetWords(GetWordsRequest) returns (GetWordsResponse) {}
+  rpc PublishMessages(PublishMessageRequest) returns (PublishMessageResponse) {}
+  rpc CreateConsumer(CreateConsumerRequest) returns (stream CreateConsumerResponse) {}
+  rpc Consume(ConsumeRequest) returns (ConsumeResponse) {}
+  rpc CreateTopic(CreateTopicRequest) returns (CreateTopicResponse) {}
 }
 
-message AddWordRequest {
-	string word = 1;
+message PublishMessageRequest {
+  string topic = 1;
+  int64 partition = 2;
+  repeated Message messages = 3;
 }
 
-message AddWordResponse {
-	uint64 commit_index = 1;
+message PublishMessageResponse {
+  repeated Message messages = 1;
+  int64 lastIndex = 2;
 }
 
-message GetWordsRequest {
+message ScaleTopicRequest {
+  string topic = 1;
+  int64 partitions = 2;
 }
 
-message GetWordsResponse {
-	uint64 read_at_index = 1;
-	repeated string best_words = 2;
+message ScaleTopicResponse {
+  int64 lastIndex = 1;
+}
+
+message CreateTopicRequest {
+  string topic = 1;
+  int64 numPartitions = 2;
+}
+
+message CreateTopicResponse {
+  int64 lastIndex = 1;
+}
+
+message CreateConsumerRequest {
+  string topic = 1;
+}
+
+message CreateConsumerResponse {
+  int64 consumerId = 1;
+  int64 lastIndex = 2;
+}
+
+message ConsumeRequest {
+  string topic = 1;
+  int64 consumerId = 2;
+}
+
+message ConsumeResponse {
+  repeated Message messages = 1;
+  int64 lastIndex = 2;
+}
+
+message Message {
+  bytes key = 1;
+  bytes payload = 2;
+  string topic = 3;
+  int64 partition = 4;
+  int64 offset = 5;
 }
