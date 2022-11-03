@@ -4,13 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strings"
 	"sync"
 	"time"
 
-	pb "github.com/Kapperchino/jet/proto"
 	"github.com/Kapperchino/jet-leader-rpc/rafterrors"
+	pb "github.com/Kapperchino/jet/proto"
 	"github.com/hashicorp/raft"
 )
 
@@ -56,7 +55,7 @@ func (f *wordTracker) Snapshot() (raft.FSMSnapshot, error) {
 }
 
 func (f *wordTracker) Restore(r io.ReadCloser) error {
-	b, err := ioutil.ReadAll(r)
+	b, err := io.ReadAll(r)
 	if err != nil {
 		return err
 	}

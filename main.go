@@ -9,10 +9,10 @@ import (
 	"os"
 	"path/filepath"
 
-	pb "github.com/Kapperchino/jet/proto"
+	"github.com/Kapperchino/jet-admin"
 	"github.com/Kapperchino/jet-leader-rpc/leaderhealth"
 	transport "github.com/Kapperchino/jet-transport"
-	"github.com/Kapperchino/jet-admin"
+	pb "github.com/Kapperchino/jet/proto"
 	"github.com/hashicorp/raft"
 	boltdb "github.com/hashicorp/raft-boltdb"
 	"google.golang.org/grpc"
