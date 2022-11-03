@@ -69,7 +69,6 @@ func NewRaft(ctx context.Context, myID, myAddress string, fsm raft.FSM) (*raft.R
 	c.LocalID = raft.ServerID(myID)
 
 	baseDir := filepath.Join(*raftDir, myID)
-
 	ldb, err := boltdb.NewBoltStore(filepath.Join(baseDir, "logs.dat"))
 	if err != nil {
 		return nil, nil, fmt.Errorf(`boltdb.NewBoltStore(%q): %v`, filepath.Join(baseDir, "logs.dat"), err)

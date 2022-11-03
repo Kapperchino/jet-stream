@@ -11,7 +11,7 @@ import (
 	"time"
 
 	_ "github.com/Jille/grpc-multi-resolver"
-	pb "github.com/Jille/raft-grpc-example/proto"
+	pb "github.com/Kapperchino/jet/proto"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"google.golang.org/grpc"
 	_ "google.golang.org/grpc/health"
@@ -24,7 +24,7 @@ func main() {
 		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(100 * time.Millisecond)),
 		grpc_retry.WithMax(5),
 	}
-	conn, err := grpc.Dial("multi:///localhost:50051,localhost:50052,localhost:50053",
+	conn, err := grpc.Dial("multi:///localhost:8080,localhost:8081,localhost:8082",
 		grpc.WithDefaultServiceConfig(serviceConfig), grpc.WithInsecure(),
 		grpc.WithDefaultCallOptions(grpc.WaitForReady(true)),
 		grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(retryOpts...)))
@@ -42,7 +42,8 @@ func main() {
 		go func() {
 			defer wg.Done()
 			for w := range ch {
-				_, err := c.AddWord(context.Background(), &pb.AddWordRequest{Word: w})
+				res, err := c.AddWord(context.Background(), &pb.AddWordRequest{Word: w})
+				log.Printf("%s", res)
 				if err != nil {
 					log.Fatalf("AddWord RPC failed: %v", err)
 				}
