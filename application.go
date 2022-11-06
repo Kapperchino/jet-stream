@@ -2,13 +2,16 @@ package main
 
 import (
 	"context"
+	"github.com/Kapperchino/jet-leader-rpc/rafterrors"
 	pb "github.com/Kapperchino/jet/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/raft"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"io"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 type nodeState struct {
@@ -79,9 +82,32 @@ type rpcInterface struct {
 	pb.UnimplementedExampleServer
 }
 
-func (rpcInterface) PublishMessages(ctx context.Context, req *pb.PublishMessageRequest) (*pb.PublishMessageResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method PublishMessages not implemented")
+func PublishMessagesInternal(r rpcInterface, req *pb.PublishMessageRequest) ([]*pb.Message, error) {
+	input := &pb.Write{
+		Operation: &pb.Write_Publish{
+			Publish: &pb.Publish{
+				Topic:    req.GetTopic(),
+				Messages: req.GetMessages(),
+			},
+		},
+	}
+	val, _ := proto.Marshal(input)
+	res := r.raft.Apply(val, time.Second)
+	if err := res.Error(); err != nil {
+		return nil, rafterrors.MarkRetriable(err)
+	}
+	return res.Response().([]*pb.Message), nil
 }
+
+func (r rpcInterface) PublishMessages(ctx context.Context, req *pb.PublishMessageRequest) (*pb.PublishMessageResponse, error) {
+	messages, err := PublishMessagesInternal(r, req)
+	res := &pb.PublishMessageResponse{Messages: messages}
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
 func (rpcInterface) CreateConsumer(ctx *pb.CreateConsumerRequest, server pb.Example_CreateConsumerServer) error {
 	return status.Errorf(codes.Unimplemented, "method CreateConsumer not implemented")
 }

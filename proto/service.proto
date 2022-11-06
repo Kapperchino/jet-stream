@@ -12,7 +12,7 @@ service Example {
 message PublishMessageRequest {
   string topic = 1;
   int64 partition = 2;
-  repeated Message messages = 3;
+  repeated KeyVal messages = 3;
 }
 
 message PublishMessageResponse {
@@ -63,4 +63,67 @@ message Message {
   string topic = 3;
   int64 partition = 4;
   int64 offset = 5;
+}
+
+enum Operation {
+  PUBLISH = 0;
+  CONSUME = 1;
+  CREATE_CONSUMER = 2;
+  CREATE_TOPIC = 3;
+}
+
+message KeyVal {
+  bytes key = 1;
+  bytes val = 2;
+}
+
+message Publish {
+  string topic = 1;
+  repeated KeyVal messages = 2;
+}
+
+message PublishResult {
+  repeated Message messages = 1;
+}
+
+message Consume {
+  string topic = 1;
+  int64 id = 2;
+}
+
+message ConsumeResult {
+  repeated Message messages = 1;
+}
+
+message CreateConsumer{
+  string topic = 1;
+}
+
+message CreateConsumerResult{
+}
+
+message CreateTopic{
+  string topic = 1;
+  int64 partitions = 2;
+}
+
+message CreateTopicResult{
+}
+
+message Write {
+  oneof operation {
+    Publish publish = 1;
+    Consume consume = 2;
+    CreateConsumer createConsumer = 3;
+    CreateTopic createTopic = 4;
+  }
+}
+
+message WriteResult {
+  oneof result {
+    PublishResult publishResult = 1;
+    ConsumeResult consumeResult = 2;
+    CreateConsumerResult createConsumerResult = 3;
+    CreateTopicResult createTopicResult = 4;
+  }
 }
