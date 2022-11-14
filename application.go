@@ -6,28 +6,35 @@ import (
 	pb "github.com/Kapperchino/jet/proto"
 	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/raft"
+	boltdb "github.com/hashicorp/raft-boltdb"
+	"github.com/serialx/hashring"
+	"github.com/spaolacci/murmur3"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"io"
+	"log"
+	"os"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
 type nodeState struct {
-	topics sync.Map
+	topics   sync.Map
+	messages boltdb.BoltStore
 }
 
 type topic struct {
 	name       string
 	partitions []partition
+	hashRing   *hashring.HashRing
 }
 
 type partition struct {
-	num      int64
-	topic    string
-	offset   atomic.Uint64
-	messages []int64
+	num    int64
+	topic  string
+	offset atomic.Uint64
 }
 
 var _ raft.FSM = &nodeState{}
@@ -41,7 +48,75 @@ func (f *nodeState) Apply(l *raft.Log) interface{} {
 	//		break
 	//	}
 	//}
+	operation := &pb.Write{}
+	err := proto.Unmarshal(l.Data, operation)
+	if len(err.Error()) != 0 {
+		log.Fatal("joe biden")
+	}
+	switch operation.Operation.(type) {
+	case *pb.Write_Publish:
+		break
+	case *pb.Write_CreateTopic:
+		f.CreateTopic(operation.GetCreateTopic())
+		break
+	case *pb.Write_CreateConsumer:
+		break
+	case *pb.Write_Consume:
+		break
+	}
 	return nil
+}
+
+func (f *nodeState) Publish(req *pb.Publish) interface{} {
+	item, _ := f.topics.Load(req.GetTopic())
+	if item == nil {
+		return nil
+	}
+	curTopic := item.(topic)
+	for _, m := range req.GetMessages() {
+		curTopic.hashRing.GetNode(string(m.Key))
+	}
+}
+
+func (f *nodeState) CreateTopic(req *pb.CreateTopic) interface{} {
+	getTopic, _ := f.topics.Load(req.GetTopic())
+	if getTopic != nil {
+		return nil
+	}
+	err := os.Mkdir(req.GetTopic(), 0755)
+	if err != nil {
+		return nil
+	}
+	newTopic := topic{
+		name:       req.GetTopic(),
+		partitions: []partition{},
+		hashRing:   nil,
+	}
+	hasher := murmur3.New64()
+	var partitionHashed []string
+	for i := int64(0); i < req.GetPartitions(); i++ {
+		newTopic.partitions = append(newTopic.partitions, f.CreatePartition(i, req.GetTopic()))
+		_, _ = hasher.Write(make([]byte, i))
+		partitionHashed = append(partitionHashed, strconv.FormatUint(hasher.Sum64(), 2))
+		hasher.Reset()
+	}
+	newTopic.hashRing = hashring.New(partitionHashed)
+	f.topics.Store(req.GetTopic(), newTopic)
+	return nil
+}
+
+func (f *nodeState) CreatePartition(partitionNum int64, topic string) partition {
+	res := partition{
+		num:    partitionNum,
+		topic:  topic,
+		offset: atomic.Uint64{},
+	}
+	memcacheServers := []string{"192.168.0.246:11212",
+		"192.168.0.247:11212",
+		"192.168.0.249:11212"}
+
+	server, _ := ring.GetNode(strconv.FormatUint(hasher.Sum64(), 10))
+	return res
 }
 
 func (f *nodeState) Snapshot() (raft.FSMSnapshot, error) {
@@ -114,8 +189,30 @@ func (rpcInterface) CreateConsumer(ctx *pb.CreateConsumerRequest, server pb.Exam
 func (rpcInterface) Consume(ctx context.Context, req *pb.ConsumeRequest) (*pb.ConsumeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Consume not implemented")
 }
-func (rpcInterface) CreateTopic(ctx context.Context, req *pb.CreateTopicRequest) (*pb.CreateTopicResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateTopic not implemented")
+
+func CreateTopicInternal(r rpcInterface, req *pb.CreateTopicRequest) (*pb.CreateTopicResponse, error) {
+	input := &pb.Write{
+		Operation: &pb.Write_CreateTopic{
+			CreateTopic: &pb.CreateTopic{
+				Topic:      req.GetTopic(),
+				Partitions: req.GetNumPartitions(),
+			},
+		},
+	}
+	val, _ := proto.Marshal(input)
+	res := r.raft.Apply(val, time.Second)
+	if err := res.Error(); err != nil {
+		return nil, rafterrors.MarkRetriable(err)
+	}
+	return res.Response().(*pb.CreateTopicResponse), nil
+}
+
+func (r rpcInterface) CreateTopic(_ context.Context, req *pb.CreateTopicRequest) (*pb.CreateTopicResponse, error) {
+	res, err := CreateTopicInternal(r, req)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
 
 //func (r rpcInterface) AddWord(ctx context.Context, req *pb.AddWordRequest) (*pb.AddWordResponse, error) {
