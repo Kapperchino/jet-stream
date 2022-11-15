@@ -9,6 +9,7 @@ import (
 	boltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/serialx/hashring"
 	"github.com/spaolacci/murmur3"
+	"github.com/tidwall/wal"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"io"
@@ -34,20 +35,12 @@ type topic struct {
 type partition struct {
 	num    int64
 	topic  string
-	offset atomic.Uint64
+	offset *atomic.Uint64
 }
 
 var _ raft.FSM = &nodeState{}
 
 func (f *nodeState) Apply(l *raft.Log) interface{} {
-	//w := string(l.Data)
-	//for i := 0; i < len(f.words); i++ {
-	//	if compareWords(w, f.words[i]) {
-	//		copy(f.words[i+1:], f.words[i:])
-	//		f.words[i] = w
-	//		break
-	//	}
-	//}
 	operation := &pb.Write{}
 	err := proto.Unmarshal(l.Data, operation)
 	if len(err.Error()) != 0 {
@@ -70,12 +63,49 @@ func (f *nodeState) Apply(l *raft.Log) interface{} {
 func (f *nodeState) Publish(req *pb.Publish) interface{} {
 	item, _ := f.topics.Load(req.GetTopic())
 	if item == nil {
+		log.Printf("Topic %s does not exist", req.GetTopic())
 		return nil
 	}
 	curTopic := item.(topic)
+	buckets := make([][]*pb.KeyVal, len(curTopic.partitions))
+	res := make([]*pb.Message, len(req.GetMessages()))
 	for _, m := range req.GetMessages() {
-		curTopic.hashRing.GetNode(string(m.Key))
+		curPartition, _ := curTopic.hashRing.GetNodePos(string(m.Key))
+		buckets[curPartition] = append(buckets[curPartition], m)
 	}
+	for i, bucket := range buckets {
+		curLog, err := wal.Open(curTopic.name+"/"+strconv.Itoa(i), nil)
+		if err != nil {
+			log.Fatal(err)
+			return nil
+		}
+		curOffset := curTopic.partitions[i].offset.Load()
+		newOffset := curOffset
+		batch := new(wal.Batch)
+		for j, m := range bucket {
+			byteProto, err := proto.Marshal(m)
+			if err != nil {
+				log.Fatal(err)
+				return nil
+			}
+			newOffset = curOffset + uint64(j)
+			batch.Write(newOffset, byteProto)
+			res = append(res, &pb.Message{
+				Key:       m.GetKey(),
+				Payload:   m.GetVal(),
+				Topic:     req.GetTopic(),
+				Partition: int64(i),
+				Offset:    int64(newOffset),
+			})
+		}
+		curTopic.partitions[i].offset.Swap(newOffset)
+		err = curLog.WriteBatch(batch)
+		if err != nil {
+			log.Fatal(err)
+			return nil
+		}
+	}
+	return &pb.PublishResult{Messages: res}
 }
 
 func (f *nodeState) CreateTopic(req *pb.CreateTopic) interface{} {
@@ -109,13 +139,8 @@ func (f *nodeState) CreatePartition(partitionNum int64, topic string) partition 
 	res := partition{
 		num:    partitionNum,
 		topic:  topic,
-		offset: atomic.Uint64{},
+		offset: new(atomic.Uint64),
 	}
-	memcacheServers := []string{"192.168.0.246:11212",
-		"192.168.0.247:11212",
-		"192.168.0.249:11212"}
-
-	server, _ := ring.GetNode(strconv.FormatUint(hasher.Sum64(), 10))
 	return res
 }
 
@@ -133,10 +158,6 @@ func (f *nodeState) Restore(r io.ReadCloser) error {
 	//words := strings.Split(string(b), "\n")
 	//copy(f.words[:], words)
 	return nil
-}
-
-type snapshot struct {
-	words []string
 }
 
 func (s *nodeState) Persist(sink raft.SnapshotSink) error {
