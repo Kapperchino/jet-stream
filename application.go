@@ -43,15 +43,15 @@ var _ raft.FSM = &nodeState{}
 func (f *nodeState) Apply(l *raft.Log) interface{} {
 	operation := &pb.Write{}
 	err := proto.Unmarshal(l.Data, operation)
-	if len(err.Error()) != 0 {
+	if err != nil {
 		log.Fatal("joe biden")
 	}
 	switch operation.Operation.(type) {
 	case *pb.Write_Publish:
-		break
+		return f.Publish(operation.GetPublish())
 	case *pb.Write_CreateTopic:
-		f.CreateTopic(operation.GetCreateTopic())
-		break
+		res := f.CreateTopic(operation.GetCreateTopic())
+		return res
 	case *pb.Write_CreateConsumer:
 		break
 	case *pb.Write_Consume:
@@ -68,18 +68,21 @@ func (f *nodeState) Publish(req *pb.Publish) interface{} {
 	}
 	curTopic := item.(topic)
 	buckets := make([][]*pb.KeyVal, len(curTopic.partitions))
-	res := make([]*pb.Message, len(req.GetMessages()))
+	var res []*pb.Message
 	for _, m := range req.GetMessages() {
 		curPartition, _ := curTopic.hashRing.GetNodePos(string(m.Key))
 		buckets[curPartition] = append(buckets[curPartition], m)
 	}
 	for i, bucket := range buckets {
+		if bucket == nil {
+			continue
+		}
 		curLog, err := wal.Open(curTopic.name+"/"+strconv.Itoa(i), nil)
 		if err != nil {
 			log.Fatal(err)
 			return nil
 		}
-		curOffset := curTopic.partitions[i].offset.Load()
+		curOffset := curTopic.partitions[i].offset.Load() + 1
 		newOffset := curOffset
 		batch := new(wal.Batch)
 		for j, m := range bucket {
@@ -105,7 +108,7 @@ func (f *nodeState) Publish(req *pb.Publish) interface{} {
 			return nil
 		}
 	}
-	return &pb.PublishResult{Messages: res}
+	return res
 }
 
 func (f *nodeState) CreateTopic(req *pb.CreateTopic) interface{} {
@@ -115,7 +118,10 @@ func (f *nodeState) CreateTopic(req *pb.CreateTopic) interface{} {
 	}
 	err := os.Mkdir(req.GetTopic(), 0755)
 	if err != nil {
-		return nil
+		if !os.IsExist(err) {
+			log.Fatal(err)
+			return nil
+		}
 	}
 	newTopic := topic{
 		name:       req.GetTopic(),
@@ -132,7 +138,7 @@ func (f *nodeState) CreateTopic(req *pb.CreateTopic) interface{} {
 	}
 	newTopic.hashRing = hashring.New(partitionHashed)
 	f.topics.Store(req.GetTopic(), newTopic)
-	return nil
+	return new(pb.CreateTopicResponse)
 }
 
 func (f *nodeState) CreatePartition(partitionNum int64, topic string) partition {
@@ -233,6 +239,7 @@ func (r rpcInterface) CreateTopic(_ context.Context, req *pb.CreateTopicRequest)
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("Created topic %s", req.GetTopic())
 	return res, nil
 }
 

@@ -5,7 +5,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -34,15 +33,29 @@ func main() {
 	defer conn.Close()
 	c := pb.NewExampleClient(conn)
 
-	ch := generateWords()
-
+	_, err = c.CreateTopic(context.Background(), &pb.CreateTopicRequest{
+		Topic:         "Joe",
+		NumPartitions: 2,
+	})
+	if err != nil {
+		return
+	}
 	var wg sync.WaitGroup
-	for i := 0; 10 > i; i++ {
+	for i := 0; 100 > i; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for w := range ch {
-				res, err := c.AddWord(context.Background(), &pb.AddWordRequest{Word: w})
+			var arr []*pb.KeyVal
+			arr = append(arr, &pb.KeyVal{
+				Key: []byte("joe"),
+				Val: []byte("biden"),
+			})
+			for x := 0; x < 100; x++ {
+				res, err := c.PublishMessages(context.Background(), &pb.PublishMessageRequest{
+					Topic:     "Joe",
+					Partition: 0,
+					Messages:  arr,
+				})
 				log.Printf("%s", res)
 				if err != nil {
 					log.Fatalf("AddWord RPC failed: %v", err)
@@ -51,11 +64,12 @@ func main() {
 		}()
 	}
 	wg.Wait()
-	resp, err := c.GetWords(context.Background(), &pb.GetWordsRequest{})
-	if err != nil {
-		log.Fatalf("GetWords RPC failed: %v", err)
-	}
-	fmt.Println(resp)
+	log.Printf("finished")
+	//resp, err := c.GetWords(context.Background(), &pb.GetWordsRequest{})
+	//if err != nil {
+	//	log.Fatalf("GetWords RPC failed: %v", err)
+	//}
+	//fmt.Println(resp)
 }
 
 func generateWords() <-chan string {
