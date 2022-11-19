@@ -4,9 +4,7 @@ import (
 	"context"
 	"github.com/Kapperchino/jet-leader-rpc/rafterrors"
 	pb "github.com/Kapperchino/jet/proto"
-	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/raft"
-	boltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/serialx/hashring"
 	"github.com/spaolacci/murmur3"
 	"github.com/tidwall/wal"
@@ -22,8 +20,7 @@ import (
 )
 
 type nodeState struct {
-	topics   sync.Map
-	messages boltdb.BoltStore
+	topics sync.Map
 }
 
 type topic struct {
@@ -42,9 +39,9 @@ var _ raft.FSM = &nodeState{}
 
 func (f *nodeState) Apply(l *raft.Log) interface{} {
 	operation := &pb.Write{}
-	err := proto.Unmarshal(l.Data, operation)
+	err := deserializeMessage(l.Data, operation)
 	if err != nil {
-		log.Fatal("joe biden")
+		log.Fatal(err)
 	}
 	switch operation.Operation.(type) {
 	case *pb.Write_Publish:
@@ -82,26 +79,35 @@ func (f *nodeState) Publish(req *pb.Publish) interface{} {
 			log.Fatal(err)
 			return nil
 		}
-		curOffset := curTopic.partitions[i].offset.Load() + 1
-		newOffset := curOffset
+		logOffset, err := curLog.LastIndex()
+		if err != nil {
+			log.Fatal(err)
+			return nil
+		}
+		curOffSet := curTopic.partitions[i].offset.Load()
+		if curOffSet < logOffset {
+			continue
+		}
+		newOffset := logOffset + 1
 		batch := new(wal.Batch)
 		for j, m := range bucket {
-			byteProto, err := proto.Marshal(m)
-			if err != nil {
-				log.Fatal(err)
-				return nil
-			}
-			newOffset = curOffset + uint64(j)
-			batch.Write(newOffset, byteProto)
-			res = append(res, &pb.Message{
+			newOffset += uint64(j)
+			newMsg := &pb.Message{
 				Key:       m.GetKey(),
 				Payload:   m.GetVal(),
 				Topic:     req.GetTopic(),
 				Partition: int64(i),
 				Offset:    int64(newOffset),
-			})
+			}
+			byteProto, err := serializeMessage(newMsg)
+			if err != nil {
+				log.Fatal(err)
+				return nil
+			}
+			batch.Write(newOffset, byteProto)
+			res = append(res, newMsg)
 		}
-		curTopic.partitions[i].offset.Swap(newOffset)
+		curTopic.partitions[i].offset.Swap(newOffset + 1)
 		err = curLog.WriteBatch(batch)
 		if err != nil {
 			log.Fatal(err)
@@ -114,7 +120,7 @@ func (f *nodeState) Publish(req *pb.Publish) interface{} {
 func (f *nodeState) CreateTopic(req *pb.CreateTopic) interface{} {
 	getTopic, _ := f.topics.Load(req.GetTopic())
 	if getTopic != nil {
-		return nil
+		return new(pb.CreateTopicResponse)
 	}
 	err := os.Mkdir(req.GetTopic(), 0755)
 	if err != nil {
@@ -147,6 +153,7 @@ func (f *nodeState) CreatePartition(partitionNum int64, topic string) partition 
 		topic:  topic,
 		offset: new(atomic.Uint64),
 	}
+	res.offset.Store(1)
 	return res
 }
 
@@ -193,7 +200,7 @@ func PublishMessagesInternal(r rpcInterface, req *pb.PublishMessageRequest) ([]*
 			},
 		},
 	}
-	val, _ := proto.Marshal(input)
+	val, _ := serializeMessage(input)
 	res := r.raft.Apply(val, time.Second)
 	if err := res.Error(); err != nil {
 		return nil, rafterrors.MarkRetriable(err)
@@ -226,7 +233,7 @@ func CreateTopicInternal(r rpcInterface, req *pb.CreateTopicRequest) (*pb.Create
 			},
 		},
 	}
-	val, _ := proto.Marshal(input)
+	val, _ := serializeMessage(input)
 	res := r.raft.Apply(val, time.Second)
 	if err := res.Error(); err != nil {
 		return nil, rafterrors.MarkRetriable(err)

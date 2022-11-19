@@ -126,3 +126,7 @@ message WriteResult {
     CreateTopicResult createTopicResult = 4;
   }
 }
+
+message Snapshot {
+
+}
