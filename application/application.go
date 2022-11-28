@@ -1,26 +1,28 @@
-package main
+package application
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
+	"encoding/gob"
+	"fmt"
 	"github.com/Kapperchino/jet-leader-rpc/rafterrors"
 	pb "github.com/Kapperchino/jet/proto"
 	"github.com/hashicorp/raft"
 	"github.com/serialx/hashring"
 	"github.com/spaolacci/murmur3"
-	"github.com/tidwall/wal"
+	"go.etcd.io/bbolt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"io"
 	"log"
-	"os"
 	"strconv"
-	"sync"
 	"sync/atomic"
 	"time"
 )
 
-type nodeState struct {
-	topics sync.Map
+type NodeState struct {
+	topics bbolt.DB
 }
 
 type topic struct {
@@ -35,9 +37,9 @@ type partition struct {
 	offset *atomic.Uint64
 }
 
-var _ raft.FSM = &nodeState{}
+var _ raft.FSM = &NodeState{}
 
-func (f *nodeState) Apply(l *raft.Log) interface{} {
+func (f *NodeState) Apply(l *raft.Log) interface{} {
 	operation := &pb.Write{}
 	err := deserializeMessage(l.Data, operation)
 	if err != nil {
@@ -45,9 +47,10 @@ func (f *nodeState) Apply(l *raft.Log) interface{} {
 	}
 	switch operation.Operation.(type) {
 	case *pb.Write_Publish:
-		return f.Publish(operation.GetPublish())
+		res, _ := f.Publish(operation.GetPublish(), l.Index)
+		return res
 	case *pb.Write_CreateTopic:
-		res := f.CreateTopic(operation.GetCreateTopic())
+		res, _ := f.CreateTopic(operation.GetCreateTopic())
 		return res
 	case *pb.Write_CreateConsumer:
 		break
@@ -57,13 +60,11 @@ func (f *nodeState) Apply(l *raft.Log) interface{} {
 	return nil
 }
 
-func (f *nodeState) Publish(req *pb.Publish) interface{} {
-	item, _ := f.topics.Load(req.GetTopic())
-	if item == nil {
-		log.Printf("Topic %s does not exist", req.GetTopic())
-		return nil
+func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, error) {
+	curTopic, err := f.getTopic(req.GetTopic())
+	if err != nil {
+		return nil, err
 	}
-	curTopic := item.(topic)
 	buckets := make([][]*pb.KeyVal, len(curTopic.partitions))
 	var res []*pb.Message
 	for _, m := range req.GetMessages() {
@@ -74,22 +75,31 @@ func (f *nodeState) Publish(req *pb.Publish) interface{} {
 		if bucket == nil {
 			continue
 		}
-		curLog, err := wal.Open(curTopic.name+"/"+strconv.Itoa(i), nil)
+		var lastRaftIndex uint64
+		err := f.topics.View(func(tx *bbolt.Tx) error {
+			b, _ := tx.CreateBucketIfNotExists([]byte(curTopic.name))
+			buffer := make([]byte, 8)
+			binary.PutUvarint(buffer, uint64(i))
+			b, _ = b.CreateBucketIfNotExists(buffer)
+			_, val := b.Cursor().Last()
+			var lastMsg pb.Message
+			err := deserializeMessage(val, &lastMsg)
+			if err != nil {
+				return err
+			}
+			lastRaftIndex = lastMsg.RaftIndex
+			return nil
+		})
 		if err != nil {
 			log.Fatal(err)
-			return nil
+			return nil, err
 		}
-		logOffset, err := curLog.LastIndex()
-		if err != nil {
-			log.Fatal(err)
-			return nil
+		//no op if messages has already been written
+		if lastRaftIndex >= raftIndex {
+			return nil, nil
 		}
 		curOffSet := curTopic.partitions[i].offset.Load()
-		if curOffSet < logOffset {
-			continue
-		}
-		newOffset := logOffset + 1
-		batch := new(wal.Batch)
+		newOffset := curOffSet + 1
 		for j, m := range bucket {
 			newOffset += uint64(j)
 			newMsg := &pb.Message{
@@ -98,36 +108,40 @@ func (f *nodeState) Publish(req *pb.Publish) interface{} {
 				Topic:     req.GetTopic(),
 				Partition: int64(i),
 				Offset:    int64(newOffset),
+				RaftIndex: raftIndex,
 			}
 			byteProto, err := serializeMessage(newMsg)
 			if err != nil {
 				log.Fatal(err)
-				return nil
+				return nil, err
 			}
-			batch.Write(newOffset, byteProto)
+			err = f.topics.Batch(func(tx *bbolt.Tx) error {
+				b, _ := tx.CreateBucketIfNotExists([]byte(curTopic.name))
+				buffer := make([]byte, 8)
+				binary.PutUvarint(buffer, uint64(i))
+				b, _ = b.CreateBucketIfNotExists(buffer)
+				err = b.Put(newMsg.GetKey(), byteProto)
+				if err != nil {
+					return err
+				}
+				return nil
+			})
+			if err != nil {
+				log.Fatal(err)
+				return nil, err
+			}
 			res = append(res, newMsg)
 		}
 		curTopic.partitions[i].offset.Swap(newOffset + 1)
-		err = curLog.WriteBatch(batch)
-		if err != nil {
-			log.Fatal(err)
-			return nil
-		}
 	}
-	return res
+	return res, nil
 }
 
-func (f *nodeState) CreateTopic(req *pb.CreateTopic) interface{} {
-	getTopic, _ := f.topics.Load(req.GetTopic())
-	if getTopic != nil {
-		return new(pb.CreateTopicResponse)
-	}
-	err := os.Mkdir(req.GetTopic(), 0755)
-	if err != nil {
-		if !os.IsExist(err) {
-			log.Fatal(err)
-			return nil
-		}
+func (f *NodeState) CreateTopic(req *pb.CreateTopic) (interface{}, error) {
+	curTopic, err := f.getTopic(req.GetTopic())
+	//already exists
+	if err != nil && curTopic != nil {
+		return new(pb.CreateTopicResponse), nil
 	}
 	newTopic := topic{
 		name:       req.GetTopic(),
@@ -143,11 +157,50 @@ func (f *nodeState) CreateTopic(req *pb.CreateTopic) interface{} {
 		hasher.Reset()
 	}
 	newTopic.hashRing = hashring.New(partitionHashed)
-	f.topics.Store(req.GetTopic(), newTopic)
-	return new(pb.CreateTopicResponse)
+	//seralize topic and put in db
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err = enc.Encode(newTopic)
+	if err != nil {
+		return nil, fmt.Errorf("error encoding topic")
+	}
+	err = f.topics.Update(func(tx *bbolt.Tx) error {
+		b, _ := tx.CreateBucketIfNotExists([]byte("Topics"))
+		err = b.Put([]byte(newTopic.name), buf.Bytes())
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error saving topic")
+	}
+	return new(pb.CreateTopicResponse), nil
 }
 
-func (f *nodeState) CreatePartition(partitionNum int64, topic string) partition {
+func (f *NodeState) getTopic(topicName string) (*topic, error) {
+	var curTopic *topic
+	err := f.topics.View(func(tx *bbolt.Tx) error {
+		b, _ := tx.CreateBucketIfNotExists([]byte("Topics"))
+		v := b.Get([]byte(topicName))
+		buf := bytes.NewBuffer(v)
+		dec := gob.NewDecoder(buf)
+		if err := dec.Decode(&curTopic); err != nil {
+			log.Fatal(err)
+			return err
+		}
+		return nil
+	})
+	if curTopic == nil {
+		log.Printf("Topic %s does not exist", topicName)
+		return nil, err
+	} else if err != nil {
+		return nil, fmt.Errorf("error with local store, %s", err)
+	}
+	return curTopic, nil
+}
+
+func (f *NodeState) CreatePartition(partitionNum int64, topic string) partition {
 	res := partition{
 		num:    partitionNum,
 		topic:  topic,
@@ -157,13 +210,13 @@ func (f *nodeState) CreatePartition(partitionNum int64, topic string) partition 
 	return res
 }
 
-func (f *nodeState) Snapshot() (raft.FSMSnapshot, error) {
+func (f *NodeState) Snapshot() (raft.FSMSnapshot, error) {
 	//// Make sure that any future calls to f.Apply() don't change the snapshot.
 	//return &snapshot{cloneWords(f.words)}, nil
 	return nil, nil
 }
 
-func (f *nodeState) Restore(r io.ReadCloser) error {
+func (f *NodeState) Restore(r io.ReadCloser) error {
 	//b, err := io.ReadAll(r)
 	//if err != nil {
 	//	return err
@@ -173,7 +226,7 @@ func (f *nodeState) Restore(r io.ReadCloser) error {
 	return nil
 }
 
-func (s *nodeState) Persist(sink raft.SnapshotSink) error {
+func (s *NodeState) Persist(sink raft.SnapshotSink) error {
 	//_, err := sink.Write([]byte(strings.Join(s.words, "\n")))
 	//if err != nil {
 	//	sink.Cancel()
@@ -182,16 +235,16 @@ func (s *nodeState) Persist(sink raft.SnapshotSink) error {
 	return sink.Close()
 }
 
-func (s *nodeState) Release() {
+func (s *NodeState) Release() {
 }
 
-type rpcInterface struct {
-	nodeState *nodeState
-	raft      *raft.Raft
+type RpcInterface struct {
+	NodeState *NodeState
+	Raft      *raft.Raft
 	pb.UnimplementedExampleServer
 }
 
-func PublishMessagesInternal(r rpcInterface, req *pb.PublishMessageRequest) ([]*pb.Message, error) {
+func PublishMessagesInternal(r RpcInterface, req *pb.PublishMessageRequest) ([]*pb.Message, error) {
 	input := &pb.Write{
 		Operation: &pb.Write_Publish{
 			Publish: &pb.Publish{
@@ -201,14 +254,14 @@ func PublishMessagesInternal(r rpcInterface, req *pb.PublishMessageRequest) ([]*
 		},
 	}
 	val, _ := serializeMessage(input)
-	res := r.raft.Apply(val, time.Second)
+	res := r.Raft.Apply(val, time.Second)
 	if err := res.Error(); err != nil {
 		return nil, rafterrors.MarkRetriable(err)
 	}
 	return res.Response().([]*pb.Message), nil
 }
 
-func (r rpcInterface) PublishMessages(ctx context.Context, req *pb.PublishMessageRequest) (*pb.PublishMessageResponse, error) {
+func (r RpcInterface) PublishMessages(ctx context.Context, req *pb.PublishMessageRequest) (*pb.PublishMessageResponse, error) {
 	messages, err := PublishMessagesInternal(r, req)
 	res := &pb.PublishMessageResponse{Messages: messages}
 	if err != nil {
@@ -217,14 +270,14 @@ func (r rpcInterface) PublishMessages(ctx context.Context, req *pb.PublishMessag
 	return res, nil
 }
 
-func (rpcInterface) CreateConsumer(ctx *pb.CreateConsumerRequest, server pb.Example_CreateConsumerServer) error {
+func (RpcInterface) CreateConsumer(ctx *pb.CreateConsumerRequest, server pb.Example_CreateConsumerServer) error {
 	return status.Errorf(codes.Unimplemented, "method CreateConsumer not implemented")
 }
-func (rpcInterface) Consume(ctx context.Context, req *pb.ConsumeRequest) (*pb.ConsumeResponse, error) {
+func (RpcInterface) Consume(ctx context.Context, req *pb.ConsumeRequest) (*pb.ConsumeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Consume not implemented")
 }
 
-func CreateTopicInternal(r rpcInterface, req *pb.CreateTopicRequest) (*pb.CreateTopicResponse, error) {
+func CreateTopicInternal(r RpcInterface, req *pb.CreateTopicRequest) (*pb.CreateTopicResponse, error) {
 	input := &pb.Write{
 		Operation: &pb.Write_CreateTopic{
 			CreateTopic: &pb.CreateTopic{
@@ -234,14 +287,14 @@ func CreateTopicInternal(r rpcInterface, req *pb.CreateTopicRequest) (*pb.Create
 		},
 	}
 	val, _ := serializeMessage(input)
-	res := r.raft.Apply(val, time.Second)
+	res := r.Raft.Apply(val, time.Second)
 	if err := res.Error(); err != nil {
 		return nil, rafterrors.MarkRetriable(err)
 	}
 	return res.Response().(*pb.CreateTopicResponse), nil
 }
 
-func (r rpcInterface) CreateTopic(_ context.Context, req *pb.CreateTopicRequest) (*pb.CreateTopicResponse, error) {
+func (r RpcInterface) CreateTopic(_ context.Context, req *pb.CreateTopicRequest) (*pb.CreateTopicResponse, error) {
 	res, err := CreateTopicInternal(r, req)
 	if err != nil {
 		return nil, err

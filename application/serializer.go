@@ -1,4 +1,4 @@
-package main
+package application
 
 import (
 	"google.golang.org/protobuf/encoding/protojson"

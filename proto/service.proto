@@ -62,6 +62,7 @@ message Message {
   string topic = 3;
   int64 partition = 4;
   int64 offset = 5;
+  uint64 raftIndex = 6;
 }
 
 enum Operation {

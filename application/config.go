@@ -1,3 +1,3 @@
-package main
+package application
 
 var DEV_MODE = true

@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	application "github.com/Kapperchino/jet-application"
 	"log"
 	"net"
 	"os"
@@ -44,16 +45,16 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	nodeState := &nodeState{}
+	nodeState := &application.NodeState{}
 
 	r, tm, err := NewRaft(ctx, *raftId, *myAddr, nodeState)
 	if err != nil {
 		log.Fatalf("failed to start raft: %v", err)
 	}
 	s := grpc.NewServer()
-	pb.RegisterExampleServer(s, &rpcInterface{
-		nodeState: nodeState,
-		raft:      r,
+	pb.RegisterExampleServer(s, &application.RpcInterface{
+		NodeState: nodeState,
+		Raft:      r,
 	})
 	tm.Register(s)
 	leaderhealth.Setup(r, s, []string{"Example"})
