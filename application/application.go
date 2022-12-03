@@ -17,24 +17,23 @@ import (
 	"io"
 	"log"
 	"strconv"
-	"sync/atomic"
 	"time"
 )
 
 type NodeState struct {
-	topics bbolt.DB
+	Topics *bbolt.DB
 }
 
-type topic struct {
-	name       string
-	partitions []partition
+type Topic struct {
+	Name       string
+	Partitions []Partition
 	hashRing   *hashring.HashRing
 }
 
-type partition struct {
-	num    int64
-	topic  string
-	offset *atomic.Uint64
+type Partition struct {
+	Num    int64
+	Topic  string
+	Offset uint64
 }
 
 var _ raft.FSM = &NodeState{}
@@ -65,7 +64,7 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 	if err != nil {
 		return nil, err
 	}
-	buckets := make([][]*pb.KeyVal, len(curTopic.partitions))
+	buckets := make([][]*pb.KeyVal, len(curTopic.Partitions))
 	var res []*pb.Message
 	for _, m := range req.GetMessages() {
 		curPartition, _ := curTopic.hashRing.GetNodePos(string(m.Key))
@@ -76,11 +75,17 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 			continue
 		}
 		var lastRaftIndex uint64
-		err := f.topics.View(func(tx *bbolt.Tx) error {
-			b, _ := tx.CreateBucketIfNotExists([]byte(curTopic.name))
+		err := f.Topics.View(func(tx *bbolt.Tx) error {
+			b := tx.Bucket([]byte(curTopic.Name))
+			if b == nil {
+				return nil
+			}
 			buffer := make([]byte, 8)
 			binary.PutUvarint(buffer, uint64(i))
-			b, _ = b.CreateBucketIfNotExists(buffer)
+			b = b.Bucket(buffer)
+			if b == nil {
+				return nil
+			}
 			_, val := b.Cursor().Last()
 			var lastMsg pb.Message
 			err := deserializeMessage(val, &lastMsg)
@@ -98,41 +103,42 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 		if lastRaftIndex >= raftIndex {
 			return nil, nil
 		}
-		curOffSet := curTopic.partitions[i].offset.Load()
-		newOffset := curOffSet + 1
-		for j, m := range bucket {
-			newOffset += uint64(j)
-			newMsg := &pb.Message{
-				Key:       m.GetKey(),
-				Payload:   m.GetVal(),
-				Topic:     req.GetTopic(),
-				Partition: int64(i),
-				Offset:    int64(newOffset),
-				RaftIndex: raftIndex,
-			}
-			byteProto, err := serializeMessage(newMsg)
-			if err != nil {
-				log.Fatal(err)
-				return nil, err
-			}
-			err = f.topics.Batch(func(tx *bbolt.Tx) error {
-				b, _ := tx.CreateBucketIfNotExists([]byte(curTopic.name))
+		newOffset := uint64(0)
+		for _, m := range bucket {
+			err = f.Topics.Batch(func(tx *bbolt.Tx) error {
+				b, _ := tx.CreateBucketIfNotExists([]byte(curTopic.Name))
 				buffer := make([]byte, 8)
 				binary.PutUvarint(buffer, uint64(i))
 				b, _ = b.CreateBucketIfNotExists(buffer)
+				offset, _ := b.NextSequence()
+				newOffset = offset
+				newMsg := &pb.Message{
+					Key:       m.GetKey(),
+					Payload:   m.GetVal(),
+					Topic:     req.GetTopic(),
+					Partition: int64(i),
+					Offset:    int64(offset),
+					RaftIndex: raftIndex,
+				}
+				byteProto, err := serializeMessage(newMsg)
+				if err != nil {
+					log.Fatal(err)
+					return err
+				}
+
 				err = b.Put(newMsg.GetKey(), byteProto)
 				if err != nil {
 					return err
 				}
+				res = append(res, newMsg)
 				return nil
 			})
 			if err != nil {
 				log.Fatal(err)
 				return nil, err
 			}
-			res = append(res, newMsg)
 		}
-		curTopic.partitions[i].offset.Swap(newOffset + 1)
+		curTopic.Partitions[i].Offset = newOffset
 	}
 	return res, nil
 }
@@ -140,48 +146,52 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 func (f *NodeState) CreateTopic(req *pb.CreateTopic) (interface{}, error) {
 	curTopic, err := f.getTopic(req.GetTopic())
 	//already exists
-	if err != nil && curTopic != nil {
+	if err == nil && curTopic != nil {
 		return new(pb.CreateTopicResponse), nil
 	}
-	newTopic := topic{
-		name:       req.GetTopic(),
-		partitions: []partition{},
+	newTopic := Topic{
+		Name:       req.GetTopic(),
+		Partitions: []Partition{},
 		hashRing:   nil,
 	}
 	hasher := murmur3.New64()
 	var partitionHashed []string
 	for i := int64(0); i < req.GetPartitions(); i++ {
-		newTopic.partitions = append(newTopic.partitions, f.CreatePartition(i, req.GetTopic()))
+		newTopic.Partitions = append(newTopic.Partitions, f.CreatePartition(i, req.GetTopic()))
 		_, _ = hasher.Write(make([]byte, i))
 		partitionHashed = append(partitionHashed, strconv.FormatUint(hasher.Sum64(), 2))
 		hasher.Reset()
 	}
 	newTopic.hashRing = hashring.New(partitionHashed)
-	//seralize topic and put in db
+	//seralize Topic and put in db
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
 	err = enc.Encode(newTopic)
 	if err != nil {
-		return nil, fmt.Errorf("error encoding topic")
+		return nil, fmt.Errorf("error encoding Topic")
 	}
-	err = f.topics.Update(func(tx *bbolt.Tx) error {
+	err = f.Topics.Update(func(tx *bbolt.Tx) error {
 		b, _ := tx.CreateBucketIfNotExists([]byte("Topics"))
-		err = b.Put([]byte(newTopic.name), buf.Bytes())
+		err = b.Put([]byte(newTopic.Name), buf.Bytes())
 		if err != nil {
 			return err
 		}
+		log.Printf("Created Topic %s", req.GetTopic())
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error saving topic")
+		return nil, fmt.Errorf("error saving Topic")
 	}
 	return new(pb.CreateTopicResponse), nil
 }
 
-func (f *NodeState) getTopic(topicName string) (*topic, error) {
-	var curTopic *topic
-	err := f.topics.View(func(tx *bbolt.Tx) error {
-		b, _ := tx.CreateBucketIfNotExists([]byte("Topics"))
+func (f *NodeState) getTopic(topicName string) (*Topic, error) {
+	var curTopic *Topic
+	err := f.Topics.View(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte("Topics"))
+		if b == nil {
+			return nil
+		}
 		v := b.Get([]byte(topicName))
 		buf := bytes.NewBuffer(v)
 		dec := gob.NewDecoder(buf)
@@ -189,6 +199,14 @@ func (f *NodeState) getTopic(topicName string) (*topic, error) {
 			log.Fatal(err)
 			return err
 		}
+		hasher := murmur3.New64()
+		var partitionHashed []string
+		for i := 0; i < len(curTopic.Partitions); i++ {
+			_, _ = hasher.Write(make([]byte, i))
+			partitionHashed = append(partitionHashed, strconv.FormatUint(hasher.Sum64(), 2))
+			hasher.Reset()
+		}
+		curTopic.hashRing = hashring.New(partitionHashed)
 		return nil
 	})
 	if curTopic == nil {
@@ -200,13 +218,12 @@ func (f *NodeState) getTopic(topicName string) (*topic, error) {
 	return curTopic, nil
 }
 
-func (f *NodeState) CreatePartition(partitionNum int64, topic string) partition {
-	res := partition{
-		num:    partitionNum,
-		topic:  topic,
-		offset: new(atomic.Uint64),
+func (f *NodeState) CreatePartition(partitionNum int64, topic string) Partition {
+	res := Partition{
+		Num:    partitionNum,
+		Topic:  topic,
+		Offset: 1,
 	}
-	res.offset.Store(1)
 	return res
 }
 
@@ -299,7 +316,6 @@ func (r RpcInterface) CreateTopic(_ context.Context, req *pb.CreateTopicRequest)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("Created topic %s", req.GetTopic())
 	return res, nil
 }
 

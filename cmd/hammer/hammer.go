@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"log"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"google.golang.org/grpc"
 	_ "google.golang.org/grpc/health"
-	ntw "moul.io/number-to-words"
 )
 
 func main() {
@@ -46,9 +46,11 @@ func main() {
 		go func() {
 			defer wg.Done()
 			var arr []*pb.KeyVal
+			token := make([]byte, 3*1024*1024)
+			rand.Read(token)
 			arr = append(arr, &pb.KeyVal{
 				Key: []byte("joe"),
-				Val: []byte("biden"),
+				Val: token,
 			})
 			for x := 0; x < 100; x++ {
 				res, err := c.PublishMessages(context.Background(), &pb.PublishMessageRequest{
@@ -56,7 +58,9 @@ func main() {
 					Partition: 0,
 					Messages:  arr,
 				})
-				log.Printf("%s", res)
+				for _, m := range res.Messages {
+					log.Printf("%d", m.Offset)
+				}
 				if err != nil {
 					log.Fatalf("AddWord RPC failed: %v", err)
 				}
@@ -65,20 +69,4 @@ func main() {
 	}
 	wg.Wait()
 	log.Printf("finished")
-	//resp, err := c.GetWords(context.Background(), &pb.GetWordsRequest{})
-	//if err != nil {
-	//	log.Fatalf("GetWords RPC failed: %v", err)
-	//}
-	//fmt.Println(resp)
-}
-
-func generateWords() <-chan string {
-	ch := make(chan string, 1)
-	go func() {
-		for i := 1; 2000 > i; i++ {
-			ch <- ntw.IntegerToNlNl(i)
-		}
-		close(ch)
-	}()
-	return ch
 }

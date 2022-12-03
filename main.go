@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	application "github.com/Kapperchino/jet-application"
+	"go.etcd.io/bbolt"
 	"log"
 	"net"
 	"os"
@@ -45,7 +46,10 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	nodeState := &application.NodeState{}
+	db, _ := bbolt.Open("./bolt", 0666, nil)
+	nodeState := &application.NodeState{
+		Topics: db,
+	}
 
 	r, tm, err := NewRaft(ctx, *raftId, *myAddr, nodeState)
 	if err != nil {
