@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	application "github.com/Kapperchino/jet-application"
+	"github.com/Kapperchino/jet-application/fsm"
 	"go.etcd.io/bbolt"
 	"log"
 	"net"
@@ -47,7 +48,7 @@ func main() {
 	}
 
 	db, _ := bbolt.Open("./bolt", 0666, nil)
-	nodeState := &application.NodeState{
+	nodeState := &fsm.NodeState{
 		Topics: db,
 	}
 
