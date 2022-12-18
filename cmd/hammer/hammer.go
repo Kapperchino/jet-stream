@@ -40,8 +40,14 @@ func main() {
 	if err != nil {
 		return
 	}
+
+	publishTest(c)
+
+}
+
+func publishTest(c pb.ExampleClient) {
 	var wg sync.WaitGroup
-	for i := 0; 100 > i; i++ {
+	for i := 0; 1 > i; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -68,5 +74,37 @@ func main() {
 		}()
 	}
 	wg.Wait()
-	log.Printf("finished")
+	log.Printf("finished publishing")
+}
+
+func consumerTest(c pb.ExampleClient) {
+	var wg sync.WaitGroup
+	for i := 0; 1 > i; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var arr []*pb.KeyVal
+			token := make([]byte, 3*1024*1024)
+			rand.Read(token)
+			arr = append(arr, &pb.KeyVal{
+				Key: []byte("joe"),
+				Val: token,
+			})
+			for x := 0; x < 100; x++ {
+				res, err := c.PublishMessages(context.Background(), &pb.PublishMessageRequest{
+					Topic:     "Joe",
+					Partition: 0,
+					Messages:  arr,
+				})
+				for _, m := range res.Messages {
+					log.Printf("%d", m.Offset)
+				}
+				if err != nil {
+					log.Fatalf("AddWord RPC failed: %v", err)
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	log.Printf("finished publishing")
 }
