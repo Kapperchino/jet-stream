@@ -27,6 +27,10 @@ func ULongToBytes(num uint64) []byte {
 	return b
 }
 
+func BytesToULong(b []byte) uint64 {
+	return binary.LittleEndian.Uint64(b)
+}
+
 func LongToBytes(num int64) []byte {
 	b := make([]byte, 8)
 	binary.PutVarint(b, num)
