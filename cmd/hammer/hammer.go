@@ -40,9 +40,8 @@ func main() {
 	if err != nil {
 		return
 	}
-
-	publishTest(c)
-
+	//publishTest(c)
+	consumerTest(c)
 }
 
 func publishTest(c pb.ExampleClient) {
@@ -78,6 +77,10 @@ func publishTest(c pb.ExampleClient) {
 }
 
 func consumerTest(c pb.ExampleClient) {
+	id, err := c.CreateConsumer(context.Background(), &pb.CreateConsumerRequest{Topic: "Joe"})
+	if err != nil {
+		log.Fatalf("dialing failed: %v", err)
+	}
 	var wg sync.WaitGroup
 	for i := 0; 1 > i; i++ {
 		wg.Add(1)
@@ -90,11 +93,10 @@ func consumerTest(c pb.ExampleClient) {
 				Key: []byte("joe"),
 				Val: token,
 			})
-			for x := 0; x < 100; x++ {
-				res, err := c.PublishMessages(context.Background(), &pb.PublishMessageRequest{
-					Topic:     "Joe",
-					Partition: 0,
-					Messages:  arr,
+			for x := 0; x < 1; x++ {
+				res, err := c.Consume(context.Background(), &pb.ConsumeRequest{
+					Topic:      "Joe",
+					ConsumerId: id.GetConsumerId(),
 				})
 				for _, m := range res.Messages {
 					log.Printf("%d", m.Offset)

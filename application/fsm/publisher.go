@@ -25,7 +25,11 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 		}
 		var lastRaftIndex uint64
 		err := f.Topics.View(func(tx *bbolt.Tx) error {
-			b := tx.Bucket([]byte(curTopic.Name))
+			baseBucket := tx.Bucket([]byte("Topics"))
+			if baseBucket == nil {
+				return nil
+			}
+			b := baseBucket.Bucket([]byte(curTopic.Name))
 			if b == nil {
 				return nil
 			}
@@ -53,12 +57,26 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 			return nil, nil
 		}
 		newOffset := uint64(0)
+		err = f.Topics.Batch(func(tx *bbolt.Tx) error {
+			_, err := tx.CreateBucketIfNotExists([]byte("Topics"))
+			if err != nil {
+				return err
+			}
+			if err != nil {
+				log.Fatal("Issue creating bucket")
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			log.Fatal(err)
+			return nil, err
+		}
 		for _, m := range bucket {
 			err = f.Topics.Batch(func(tx *bbolt.Tx) error {
-				b, _ := tx.CreateBucketIfNotExists([]byte(curTopic.Name))
-				buffer := make([]byte, 8)
-				binary.PutUvarint(buffer, uint64(i))
-				b, _ = b.CreateBucketIfNotExists(buffer)
+				baseBucket := tx.Bucket([]byte("Topics"))
+				b, _ := baseBucket.CreateBucketIfNotExists([]byte(curTopic.Name))
+				b, _ = b.CreateBucketIfNotExists(util.ULongToBytes(uint64(i)))
 				offset, _ := b.NextSequence()
 				newOffset = offset
 				newMsg := &pb.Message{
@@ -74,9 +92,7 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 					log.Fatal(err)
 					return err
 				}
-				buffer = make([]byte, 8)
-				binary.PutUvarint(buffer, offset)
-				err = b.Put(buffer, byteProto)
+				err = b.Put(util.ULongToBytes(offset), byteProto)
 				if err != nil {
 					return err
 				}

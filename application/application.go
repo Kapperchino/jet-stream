@@ -7,8 +7,6 @@ import (
 	"github.com/Kapperchino/jet-leader-rpc/rafterrors"
 	pb "github.com/Kapperchino/jet/proto"
 	"github.com/hashicorp/raft"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"time"
 )
 
@@ -44,11 +42,53 @@ func (r RpcInterface) PublishMessages(ctx context.Context, req *pb.PublishMessag
 	return res, nil
 }
 
-func (RpcInterface) CreateConsumer(ctx *pb.CreateConsumerRequest, server pb.Example_CreateConsumerServer) error {
-	return status.Errorf(codes.Unimplemented, "method CreateConsumer not implemented")
+func CreateConsumerInternal(r RpcInterface, req *pb.CreateConsumerRequest) (*pb.CreateConsumerResponse, error) {
+	input := &pb.Write{
+		Operation: &pb.Write_CreateConsumer{
+			CreateConsumer: &pb.CreateConsumer{
+				Topic: req.GetTopic(),
+			},
+		},
+	}
+	val, _ := util.SerializeMessage(input)
+	res := r.Raft.Apply(val, time.Second)
+	if err := res.Error(); err != nil {
+		return nil, rafterrors.MarkRetriable(err)
+	}
+	return res.Response().(*pb.CreateConsumerResponse), nil
 }
-func (RpcInterface) Consume(ctx context.Context, req *pb.ConsumeRequest) (*pb.ConsumeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Consume not implemented")
+
+func (r RpcInterface) CreateConsumer(ctx context.Context, req *pb.CreateConsumerRequest) (*pb.CreateConsumerResponse, error) {
+	res, err := CreateConsumerInternal(r, req)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+func ConsumeInternal(r RpcInterface, req *pb.ConsumeRequest) (*pb.ConsumeResponse, error) {
+	input := &pb.Write{
+		Operation: &pb.Write_Consume{
+			Consume: &pb.Consume{
+				Topic: req.GetTopic(),
+				Id:    req.GetConsumerId(),
+			},
+		},
+	}
+	val, _ := util.SerializeMessage(input)
+	res := r.Raft.Apply(val, time.Second)
+	if err := res.Error(); err != nil {
+		return nil, rafterrors.MarkRetriable(err)
+	}
+	return res.Response().(*pb.ConsumeResponse), nil
+}
+
+func (r RpcInterface) Consume(_ context.Context, req *pb.ConsumeRequest) (*pb.ConsumeResponse, error) {
+	res, err := ConsumeInternal(r, req)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
 
 func CreateTopicInternal(r RpcInterface, req *pb.CreateTopicRequest) (*pb.CreateTopicResponse, error) {

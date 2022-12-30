@@ -52,7 +52,7 @@ func (f *NodeState) CreateTopic(req *pb.CreateTopic) (interface{}, error) {
 		return nil, fmt.Errorf("error encoding Topic")
 	}
 	err = f.Topics.Update(func(tx *bbolt.Tx) error {
-		b, _ := tx.CreateBucketIfNotExists([]byte("Topics"))
+		b, _ := tx.CreateBucketIfNotExists([]byte("TopicsMeta"))
 		err = b.Put([]byte(newTopic.Name), buf.Bytes())
 		if err != nil {
 			return err
@@ -69,7 +69,7 @@ func (f *NodeState) CreateTopic(req *pb.CreateTopic) (interface{}, error) {
 func (f *NodeState) getTopic(topicName string) (*Topic, error) {
 	var curTopic *Topic
 	err := f.Topics.View(func(tx *bbolt.Tx) error {
-		b := tx.Bucket([]byte("Topics"))
+		b := tx.Bucket([]byte("TopicsMeta"))
 		if b == nil {
 			return nil
 		}

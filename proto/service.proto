@@ -4,7 +4,7 @@ option go_package = "github.com/Kapperchino/jet/proto";
 
 service Example {
   rpc PublishMessages(PublishMessageRequest) returns (PublishMessageResponse) {}
-  rpc CreateConsumer(CreateConsumerRequest) returns (stream CreateConsumerResponse) {}
+  rpc CreateConsumer(CreateConsumerRequest) returns (CreateConsumerResponse) {}
   rpc Consume(ConsumeRequest) returns (ConsumeResponse) {}
   rpc CreateTopic(CreateTopicRequest) returns (CreateTopicResponse) {}
 }

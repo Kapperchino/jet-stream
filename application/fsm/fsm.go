@@ -23,15 +23,33 @@ func (f *NodeState) Apply(l *raft.Log) interface{} {
 	}
 	switch operation.Operation.(type) {
 	case *pb.Write_Publish:
-		res, _ := f.Publish(operation.GetPublish(), l.Index)
+		res, err := f.Publish(operation.GetPublish(), l.Index)
+		if err != nil {
+			log.Fatal(err)
+			return err
+		}
 		return res
 	case *pb.Write_CreateTopic:
-		res, _ := f.CreateTopic(operation.GetCreateTopic())
+		res, err := f.CreateTopic(operation.GetCreateTopic())
+		if err != nil {
+			log.Fatal(err)
+			return err
+		}
 		return res
 	case *pb.Write_CreateConsumer:
-		break
+		res, err := f.CreateConsumer(operation.GetCreateConsumer())
+		if err != nil {
+			log.Fatal(err)
+			return err
+		}
+		return res
 	case *pb.Write_Consume:
-		break
+		res, err := f.Consume(operation.GetConsume())
+		if err != nil {
+			log.Fatal(err)
+			return err
+		}
+		return res
 	}
 	return nil
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/Kapperchino/jet-application/util"
 	pb "github.com/Kapperchino/jet/proto"
 	"go.etcd.io/bbolt"
+	"log"
 )
 
 type Consumer struct {
@@ -25,7 +26,8 @@ func (f *NodeState) CreateConsumer(req *pb.CreateConsumer) (interface{}, error) 
 	if err != nil {
 		return nil, err
 	}
-	err = f.Topics.Batch(func(tx *bbolt.Tx) error {
+	response := new(pb.CreateConsumerResponse)
+	err = f.Topics.Update(func(tx *bbolt.Tx) error {
 		b, _ := tx.CreateBucketIfNotExists([]byte("Consumers"))
 		id, _ := b.NextSequence()
 		list := make([]Checkpoint, len(topic.Partitions))
@@ -43,18 +45,21 @@ func (f *NodeState) CreateConsumer(req *pb.CreateConsumer) (interface{}, error) 
 		enc := gob.NewEncoder(&buf)
 		err = enc.Encode(consumer)
 		if err != nil {
+			log.Printf("error encoding Topic, %s", err)
 			return fmt.Errorf("error encoding Topic, %w", err)
 		}
 		err = b.Put(util.ULongToBytes(id), buf.Bytes())
 		if err != nil {
+			log.Printf("error putting items in bucket, %s", err)
 			return fmt.Errorf("error putting items in bucket, %w", err)
 		}
+		response.ConsumerId = int64(id)
 		return nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error with local store %w", err)
 	}
-	return pb.CreateConsumerResult{}, nil
+	return response, nil
 }
 
 func (f *NodeState) Consume(req *pb.Consume) (interface{}, error) {
@@ -62,14 +67,18 @@ func (f *NodeState) Consume(req *pb.Consume) (interface{}, error) {
 	if err != nil {
 		return nil, fmt.Errorf("topic does not exist, %w", err)
 	}
+	res := pb.ConsumeResponse{
+		Messages:  make([]*pb.Message, 0),
+		LastIndex: 0,
+	}
 	err = f.Topics.View(func(tx *bbolt.Tx) error {
 		consumers := tx.Bucket([]byte("Consumers"))
 		if consumers == nil {
 			return fmt.Errorf("bucket does not exist")
 		}
-		consumerBytes := consumers.Get(util.LongToBytes(req.GetId()))
+		consumerBytes := consumers.Get(util.ULongToBytes(uint64(req.GetId())))
 		if consumerBytes == nil {
-			return fmt.Errorf("consumer does not exist")
+			return fmt.Errorf("consumer with id %d does not exist", req.GetId())
 		}
 		var consumer *Consumer
 		buf := bytes.NewBuffer(consumerBytes)
@@ -77,17 +86,23 @@ func (f *NodeState) Consume(req *pb.Consume) (interface{}, error) {
 		if err := dec.Decode(&consumer); err != nil {
 			return fmt.Errorf("decoding issues with this %w", err)
 		}
-		//TODO: loop through partitions of the topic, start at the offset at the checkpoint, then consume from partition and add to checkpoint
-		topicBucket := tx.Bucket([]byte("Topics"))
-		if topicBucket == nil {
+		baseBucket := tx.Bucket([]byte("Topics"))
+		if baseBucket == nil {
 			return fmt.Errorf("bucket does not exist")
+		}
+		topicBucket := baseBucket.Bucket([]byte(req.GetTopic()))
+		if topicBucket == nil {
+			return fmt.Errorf("bucket does not exit")
 		}
 		for i, _ := range topic.Partitions {
 			curCheckpoint := consumer.Checkpoints[i]
-			partitionBucket := topicBucket.Bucket(util.LongToBytes(int64(i)))
+			partitionBucket := topicBucket.Bucket(util.ULongToBytes(uint64(i)))
+			if partitionBucket == nil {
+				continue
+			}
 			cursor := partitionBucket.Cursor()
 			if err != nil {
-				return fmt.Errorf("Error getting cursor")
+				return fmt.Errorf("Error getting cursor %w", err)
 			}
 			var buf []*pb.Message
 			startingOffset := curCheckpoint.Offset
@@ -99,13 +114,39 @@ func (f *NodeState) Consume(req *pb.Consume) (interface{}, error) {
 				}
 				curCheckpoint.Offset++
 				buf = append(buf, msg)
-				fmt.Printf("key=%s, value=%s\n", k, v)
 			}
+			res.Messages = append(res.Messages, buf...)
 		}
 		return nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error with local store %w", err)
 	}
-	return pb.CreateConsumerResult{}, nil
+	return &res, nil
+}
+
+func (f *NodeState) getConsumer(consumerId uint64) (*Consumer, error) {
+	var consumer *Consumer
+	err := f.Topics.View(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte("Consumers"))
+		if b == nil {
+			return nil
+		}
+		v := b.Get(util.ULongToBytes(consumerId))
+		if v == nil {
+			return nil
+		}
+		buf := bytes.NewBuffer(v)
+		dec := gob.NewDecoder(buf)
+		if err := dec.Decode(&consumer); err != nil {
+			return fmt.Errorf("decoding issues with this %w", err)
+		}
+		return nil
+	})
+	if consumer == nil {
+		return nil, fmt.Errorf("consumer does not exist")
+	} else if err != nil {
+		return nil, fmt.Errorf("error with local store, %s", err)
+	}
+	return consumer, nil
 }
