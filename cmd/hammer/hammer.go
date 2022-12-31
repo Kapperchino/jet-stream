@@ -23,9 +23,12 @@ func main() {
 		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(100 * time.Millisecond)),
 		grpc_retry.WithMax(5),
 	}
+	maxSize := 1 * 1024 * 1024 * 1024
 	conn, err := grpc.Dial("multi:///localhost:8080,localhost:8081,localhost:8082",
 		grpc.WithDefaultServiceConfig(serviceConfig), grpc.WithInsecure(),
-		grpc.WithDefaultCallOptions(grpc.WaitForReady(true)),
+		grpc.WithDefaultCallOptions(grpc.WaitForReady(true),
+			grpc.MaxCallRecvMsgSize(maxSize),
+			grpc.MaxCallSendMsgSize(maxSize)),
 		grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(retryOpts...)))
 	if err != nil {
 		log.Fatalf("dialing failed: %v", err)
