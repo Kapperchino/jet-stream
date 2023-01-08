@@ -20,8 +20,9 @@ func PublishMessagesInternal(r RpcInterface, req *pb.PublishMessageRequest) ([]*
 	input := &pb.Write{
 		Operation: &pb.Write_Publish{
 			Publish: &pb.Publish{
-				Topic:    req.GetTopic(),
-				Messages: req.GetMessages(),
+				Topic:     req.GetTopic(),
+				Partition: req.GetPartition(),
+				Messages:  req.GetMessages(),
 			},
 		},
 	}

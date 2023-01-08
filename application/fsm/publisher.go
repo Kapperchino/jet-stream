@@ -1,7 +1,6 @@
 package fsm
 
 import (
-	"encoding/binary"
 	"github.com/Kapperchino/jet-application/util"
 	pb "github.com/Kapperchino/jet/proto"
 	"go.etcd.io/bbolt"
@@ -13,98 +12,87 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 	if err != nil {
 		return nil, err
 	}
-	buckets := make([][]*pb.KeyVal, len(curTopic.Partitions))
 	var res []*pb.Message
-	for _, m := range req.GetMessages() {
-		curPartition, _ := curTopic.hashRing.GetNodePos(string(m.Key))
-		buckets[curPartition] = append(buckets[curPartition], m)
+	var lastRaftIndex uint64
+	err = f.Topics.View(func(tx *bbolt.Tx) error {
+		baseBucket := tx.Bucket([]byte("Topics"))
+		if baseBucket == nil {
+			return nil
+		}
+		b := baseBucket.Bucket([]byte(curTopic.Name))
+		if b == nil {
+			return nil
+		}
+		buffer := util.ULongToBytes(uint64(req.GetPartition()))
+		b = b.Bucket(buffer)
+		if b == nil {
+			return nil
+		}
+		_, val := b.Cursor().Last()
+		var lastMsg pb.Message
+		err := util.DeserializeMessage(val, &lastMsg)
+		if err != nil {
+			return err
+		}
+		lastRaftIndex = lastMsg.RaftIndex
+		return nil
+	})
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
 	}
-	for i, bucket := range buckets {
-		if bucket == nil {
-			continue
-		}
-		var lastRaftIndex uint64
-		err := f.Topics.View(func(tx *bbolt.Tx) error {
-			baseBucket := tx.Bucket([]byte("Topics"))
-			if baseBucket == nil {
-				return nil
-			}
-			b := baseBucket.Bucket([]byte(curTopic.Name))
-			if b == nil {
-				return nil
-			}
-			buffer := make([]byte, 8)
-			binary.PutUvarint(buffer, uint64(i))
-			b = b.Bucket(buffer)
-			if b == nil {
-				return nil
-			}
-			_, val := b.Cursor().Last()
-			var lastMsg pb.Message
-			err := util.DeserializeMessage(val, &lastMsg)
-			if err != nil {
-				return err
-			}
-			lastRaftIndex = lastMsg.RaftIndex
-			return nil
-		})
+	//no op if messages has already been written
+	if lastRaftIndex >= raftIndex {
+		return nil, nil
+	}
+	newOffset := uint64(0)
+	err = f.Topics.Batch(func(tx *bbolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte("Topics"))
 		if err != nil {
-			log.Fatal(err)
-			return nil, err
+			return err
 		}
-		//no op if messages has already been written
-		if lastRaftIndex >= raftIndex {
-			return nil, nil
+		if err != nil {
+			log.Fatal("Issue creating bucket")
+			return err
 		}
-		newOffset := uint64(0)
+		return nil
+	})
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+	for _, m := range req.GetMessages() {
 		err = f.Topics.Batch(func(tx *bbolt.Tx) error {
-			_, err := tx.CreateBucketIfNotExists([]byte("Topics"))
-			if err != nil {
-				return err
+			baseBucket := tx.Bucket([]byte("Topics"))
+			b, _ := baseBucket.CreateBucketIfNotExists([]byte(curTopic.Name))
+			b, _ = b.CreateBucketIfNotExists(util.ULongToBytes(uint64(req.GetPartition())))
+			offset, _ := b.NextSequence()
+			newOffset = offset
+			newMsg := &pb.Message{
+				Key:       m.GetKey(),
+				Payload:   m.GetVal(),
+				Topic:     req.GetTopic(),
+				Partition: req.GetPartition(),
+				Offset:    int64(offset),
+				RaftIndex: raftIndex,
 			}
-			if err != nil {
-				log.Fatal("Issue creating bucket")
-				return err
-			}
-			return nil
-		})
-		if err != nil {
-			log.Fatal(err)
-			return nil, err
-		}
-		for _, m := range bucket {
-			err = f.Topics.Batch(func(tx *bbolt.Tx) error {
-				baseBucket := tx.Bucket([]byte("Topics"))
-				b, _ := baseBucket.CreateBucketIfNotExists([]byte(curTopic.Name))
-				b, _ = b.CreateBucketIfNotExists(util.ULongToBytes(uint64(i)))
-				offset, _ := b.NextSequence()
-				newOffset = offset
-				newMsg := &pb.Message{
-					Key:       m.GetKey(),
-					Payload:   m.GetVal(),
-					Topic:     req.GetTopic(),
-					Partition: int64(i),
-					Offset:    int64(offset),
-					RaftIndex: raftIndex,
-				}
-				byteProto, err := util.SerializeMessage(newMsg)
-				if err != nil {
-					log.Fatal(err)
-					return err
-				}
-				err = b.Put(util.ULongToBytes(offset), byteProto)
-				if err != nil {
-					return err
-				}
-				res = append(res, newMsg)
-				return nil
-			})
+			byteProto, err := util.SerializeMessage(newMsg)
 			if err != nil {
 				log.Fatal(err)
-				return nil, err
+				return err
 			}
+			err = b.Put(util.ULongToBytes(offset), byteProto)
+			if err != nil {
+				return err
+			}
+			res = append(res, newMsg)
+			return nil
+		})
+		if err != nil {
+			log.Fatal(err)
+			return nil, err
 		}
-		curTopic.Partitions[i].Offset = newOffset
 	}
+	curTopic.Partitions[req.GetPartition()].Offset = newOffset
 	return res, nil
 }

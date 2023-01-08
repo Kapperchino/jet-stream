@@ -79,7 +79,8 @@ message KeyVal {
 
 message Publish {
   string topic = 1;
-  repeated KeyVal messages = 2;
+  int64 partition = 2;
+  repeated KeyVal messages = 3;
 }
 
 message PublishResult {

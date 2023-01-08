@@ -48,20 +48,20 @@ func TestMain(m *testing.M) {
 	time.Sleep(3 * time.Second)
 	log.Printf("Starting the client")
 	setupClient()
-	log.Printf("Creating topic")
-	_, err := client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
-		Topic:         "Joe",
-		NumPartitions: 2,
-	})
-	if err != nil {
-		log.Fatalf("failed")
-	}
 	code := m.Run()
 	cleanup()
 	os.Exit(code)
 }
 
 func Test_Publish(t *testing.T) {
+	log.Printf("Creating topic")
+	_, err := client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
+		Topic:         "Test_Publish",
+		NumPartitions: 1,
+	})
+	if err != nil {
+		log.Fatalf("failed")
+	}
 	var arr []*pb.KeyVal
 	token := make([]byte, 3*1024*1024)
 	rand.Read(token)
@@ -70,14 +70,58 @@ func Test_Publish(t *testing.T) {
 		Val: token,
 	})
 	for x := 0; x < 10; x++ {
-		res, err := client.PublishMessages(context.Background(), &pb.PublishMessageRequest{
-			Topic:     "Joe",
-			Partition: 0,
-			Messages:  arr,
-		})
+		res, err := publishMessages("Test_Publish", arr, 0)
 		assert.Nil(t, err)
 		assert.NotNil(t, res)
 	}
+}
+
+func Test_Consume(t *testing.T) {
+	_, err := client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
+		Topic:         "Test_Consume",
+		NumPartitions: 1,
+	})
+	var arr []*pb.KeyVal
+	token := make([]byte, 3*1024*1024)
+	rand.Read(token)
+	arr = append(arr, &pb.KeyVal{
+		Key: []byte("joe"),
+		Val: token,
+	})
+	for x := 0; x < 10; x++ {
+		res, err := publishMessages("Test_Consume", arr, 0)
+		assert.Nil(t, err)
+		assert.NotNil(t, res)
+	}
+	res, err := createConsumer("Test_Consume")
+	assert.Nil(t, err)
+	res1, err := consumeMessages("Test_Consume", res.ConsumerId)
+	assert.Nil(t, err)
+	assert.Equal(t, 10, len(res1.GetMessages()))
+}
+
+func createConsumer(topic string) (*pb.CreateConsumerResponse, error) {
+	res, err := client.CreateConsumer(context.Background(), &pb.CreateConsumerRequest{
+		Topic: topic,
+	})
+	return res, err
+}
+
+func consumeMessages(topic string, consumerId int64) (*pb.ConsumeResponse, error) {
+	res, err := client.Consume(context.Background(), &pb.ConsumeRequest{
+		Topic:      topic,
+		ConsumerId: consumerId,
+	})
+	return res, err
+}
+
+func publishMessages(topic string, messages []*pb.KeyVal, partition int64) (*pb.PublishMessageResponse, error) {
+	res, err := client.PublishMessages(context.Background(), &pb.PublishMessageRequest{
+		Topic:     topic,
+		Partition: partition,
+		Messages:  messages,
+	})
+	return res, err
 }
 
 func setupServer() {
