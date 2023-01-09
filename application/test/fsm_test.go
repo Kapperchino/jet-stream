@@ -47,7 +47,7 @@ func TestMain(m *testing.M) {
 	go setupServer()
 	time.Sleep(3 * time.Second)
 	log.Printf("Starting the client")
-	setupClient()
+	client = setupClient()
 	code := m.Run()
 	cleanup()
 	os.Exit(code)
@@ -176,7 +176,7 @@ func setupServer() {
 	}
 }
 
-func setupClient() {
+func setupClient() pb.ExampleClient {
 	serviceConfig := `{"healthCheckConfig": {"serviceName": "Example"}, "loadBalancingConfig": [ { "round_robin": {} } ]}`
 	retryOpts := []grpc_retry.CallOption{
 		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(100 * time.Millisecond)),
@@ -191,7 +191,7 @@ func setupClient() {
 			grpc.MaxCallRecvMsgSize(maxSize),
 			grpc.MaxCallSendMsgSize(maxSize)),
 		grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(retryOpts...)))
-	client = pb.NewExampleClient(conn)
+	return pb.NewExampleClient(conn)
 }
 
 func initFolders() {

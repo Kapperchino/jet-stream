@@ -60,8 +60,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to start bolt: %v", err)
 	}
+	list := NewMemberList(*raftId)
 	nodeState := &fsm.NodeState{
-		Topics: db,
+		Topics:  db,
+		Members: list,
 	}
 
 	r, tm, err := NewRaft(ctx, *raftId, *myAddr, nodeState)
@@ -77,13 +79,12 @@ func main() {
 	leaderhealth.Setup(r, s, []string{"Example"})
 	raftadmin.Register(s, r)
 	reflection.Register(s)
-	NewMemberList(*raftId)
 	if err := s.Serve(sock); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
 }
 
-func NewMemberList(name string) {
+func NewMemberList(name string) *memberlist.Memberlist {
 	list, err := memberlist.Create(MakeConfig(name))
 	if err != nil {
 		panic("Failed to create memberlist: " + err.Error())
@@ -99,6 +100,7 @@ func NewMemberList(name string) {
 	for _, member := range list.Members() {
 		log.Printf("Member: %s %s\n", member.Name, member.Addr)
 	}
+	return list
 }
 
 func MakeConfig(name string) *memberlist.Config {
