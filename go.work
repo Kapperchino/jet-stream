@@ -7,4 +7,5 @@ use (
 	./multi-resolver
 	./raftadmin
 	./transport
+	./cluster
 )

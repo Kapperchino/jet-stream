@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+option go_package = "github.com/Kapperchino/jet/cluster/proto";
+
+service ClusterMetaService {
+  rpc GetPeers(GetPeersRequest) returns (GetPeersResponse) {}
+}
+
+message GetPeersRequest {
+}
+
+message GetPeersResponse {
+  repeated string peers = 1;
+}

@@ -5,8 +5,8 @@ import (
 	"encoding/gob"
 	"fmt"
 	"github.com/Kapperchino/jet-application/config"
+	pb "github.com/Kapperchino/jet-application/proto"
 	"github.com/Kapperchino/jet-application/util"
-	pb "github.com/Kapperchino/jet/proto"
 	"go.etcd.io/bbolt"
 	"log"
 )

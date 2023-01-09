@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	pb "github.com/Kapperchino/jet/proto"
+	pb "github.com/Kapperchino/jet-application/proto"
 	"github.com/serialx/hashring"
 	"github.com/spaolacci/murmur3"
 	"go.etcd.io/bbolt"
