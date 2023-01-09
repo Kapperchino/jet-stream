@@ -59,9 +59,7 @@ func Test_Publish(t *testing.T) {
 		Topic:         "Test_Publish",
 		NumPartitions: 1,
 	})
-	if err != nil {
-		log.Fatalf("failed")
-	}
+	assert.Nil(t, err)
 	var arr []*pb.KeyVal
 	token := make([]byte, 3*1024*1024)
 	rand.Read(token)
@@ -74,6 +72,27 @@ func Test_Publish(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, res)
 	}
+}
+
+func Test_Publish_No_Topic(t *testing.T) {
+	var arr []*pb.KeyVal
+	token := make([]byte, 3*1024*1024)
+	rand.Read(token)
+	arr = append(arr, &pb.KeyVal{
+		Key: []byte("joe"),
+		Val: token,
+	})
+	for x := 0; x < 10; x++ {
+		_, err := publishMessages("Test_Publish_Err", arr, 0)
+		assert.NotNil(t, err)
+	}
+}
+
+func Test_Consume_No_Topic(t *testing.T) {
+	res, err := createConsumer("Test_Consume_Err")
+	assert.NotNil(t, err)
+	assert.Nil(t, res)
+	err.Error()
 }
 
 func Test_Consume(t *testing.T) {
@@ -94,10 +113,11 @@ func Test_Consume(t *testing.T) {
 		assert.NotNil(t, res)
 	}
 	res, err := createConsumer("Test_Consume")
-	assert.Nil(t, err)
-	res1, err := consumeMessages("Test_Consume", res.ConsumerId)
-	assert.Nil(t, err)
-	assert.Equal(t, 10, len(res1.GetMessages()))
+	if assert.Nil(t, err) {
+		res1, err := consumeMessages("Test_Consume", res.ConsumerId)
+		assert.Nil(t, err)
+		assert.Equal(t, 10, len(res1.GetMessages()))
+	}
 }
 
 func createConsumer(topic string) (*pb.CreateConsumerResponse, error) {

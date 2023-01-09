@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"github.com/Kapperchino/jet-application/fsm"
 	"github.com/Kapperchino/jet-application/util"
 	"github.com/Kapperchino/jet-leader-rpc/rafterrors"
@@ -31,7 +32,15 @@ func PublishMessagesInternal(r RpcInterface, req *pb.PublishMessageRequest) ([]*
 	if err := res.Error(); err != nil {
 		return nil, rafterrors.MarkRetriable(err)
 	}
-	return res.Response().([]*pb.Message), nil
+	err, isErr := res.Response().(error)
+	if isErr {
+		return nil, err
+	}
+	response, isValid := res.Response().([]*pb.Message)
+	if !isValid {
+		return nil, errors.New("unknown data type")
+	}
+	return response, nil
 }
 
 func (r RpcInterface) PublishMessages(ctx context.Context, req *pb.PublishMessageRequest) (*pb.PublishMessageResponse, error) {
@@ -56,7 +65,15 @@ func CreateConsumerInternal(r RpcInterface, req *pb.CreateConsumerRequest) (*pb.
 	if err := res.Error(); err != nil {
 		return nil, rafterrors.MarkRetriable(err)
 	}
-	return res.Response().(*pb.CreateConsumerResponse), nil
+	err, isErr := res.Response().(error)
+	if isErr {
+		return nil, err
+	}
+	response, isValid := res.Response().(*pb.CreateConsumerResponse)
+	if !isValid {
+		return nil, errors.New("unknown data type")
+	}
+	return response, nil
 }
 
 func (r RpcInterface) CreateConsumer(ctx context.Context, req *pb.CreateConsumerRequest) (*pb.CreateConsumerResponse, error) {
@@ -81,7 +98,15 @@ func ConsumeInternal(r RpcInterface, req *pb.ConsumeRequest) (*pb.ConsumeRespons
 	if err := res.Error(); err != nil {
 		return nil, rafterrors.MarkRetriable(err)
 	}
-	return res.Response().(*pb.ConsumeResponse), nil
+	err, isErr := res.Response().(error)
+	if isErr {
+		return nil, err
+	}
+	response, isValid := res.Response().(*pb.ConsumeResponse)
+	if !isValid {
+		return nil, errors.New("unknown data type")
+	}
+	return response, nil
 }
 
 func (r RpcInterface) Consume(_ context.Context, req *pb.ConsumeRequest) (*pb.ConsumeResponse, error) {
@@ -106,7 +131,15 @@ func CreateTopicInternal(r RpcInterface, req *pb.CreateTopicRequest) (*pb.Create
 	if err := res.Error(); err != nil {
 		return nil, rafterrors.MarkRetriable(err)
 	}
-	return res.Response().(*pb.CreateTopicResponse), nil
+	err, isErr := res.Response().(error)
+	if isErr {
+		return nil, err
+	}
+	response, isValid := res.Response().(*pb.CreateTopicResponse)
+	if !isValid {
+		return nil, errors.New("unknown data type")
+	}
+	return response, nil
 }
 
 func (r RpcInterface) CreateTopic(_ context.Context, req *pb.CreateTopicRequest) (*pb.CreateTopicResponse, error) {
@@ -115,4 +148,13 @@ func (r RpcInterface) CreateTopic(_ context.Context, req *pb.CreateTopicRequest)
 		return nil, err
 	}
 	return res, nil
+}
+
+func (r RpcInterface) GetPeers(_ context.Context, req *pb.GetPeersRequest) (*pb.GetPeersResponse, error) {
+	members := r.NodeState.Members.Members()
+	arr := make([]string, len(members))
+	for x := 0; x < len(arr); x++ {
+		arr[x] = members[x].Name
+	}
+	return &pb.GetPeersResponse{Peers: arr}, nil
 }

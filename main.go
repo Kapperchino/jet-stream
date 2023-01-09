@@ -6,11 +6,15 @@ import (
 	"fmt"
 	application "github.com/Kapperchino/jet-application"
 	"github.com/Kapperchino/jet-application/fsm"
+	"github.com/hashicorp/memberlist"
+	"github.com/rs/zerolog"
 	"go.etcd.io/bbolt"
 	"log"
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
+	"time"
 
 	"github.com/Kapperchino/jet-admin"
 	"github.com/Kapperchino/jet-leader-rpc/leaderhealth"
@@ -23,11 +27,14 @@ import (
 )
 
 var (
-	myAddr = flag.String("address", "localhost:50051", "TCP host+port for this node")
-	raftId = flag.String("raft_id", "", "Node id used by Raft")
+	myAddr        = flag.String("address", "localhost:50051", "TCP host+port for this node")
+	gossipAddress = flag.String("gossip_address", "localhost:50052", "address for gossip")
+	raftId        = flag.String("raft_id", "", "Node id used by Raft")
 
-	raftDir       = flag.String("raft_data_dir", "data/", "Raft data dir")
-	raftBootstrap = flag.Bool("raft_bootstrap", false, "Whether to bootstrap the Raft cluster")
+	raftDir          = flag.String("raft_data_dir", "data/", "Raft data dir")
+	raftBootstrap    = flag.Bool("raft_bootstrap", false, "Whether to bootstrap the Raft cluster")
+	clusterBootstrap = flag.Bool("cluster_bootstrap", false, "Whether to bootstrap the Jet cluster")
+	rootNode         = flag.String("root_node", "", "Root node for gossip membership")
 )
 
 func main() {
@@ -36,6 +43,8 @@ func main() {
 	if *raftId == "" {
 		log.Fatalf("flag --raft_id is required")
 	}
+
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
 	ctx := context.Background()
 	_, port, err := net.SplitHostPort(*myAddr)
@@ -47,7 +56,10 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	db, _ := bbolt.Open("./bolt", 0666, nil)
+	db, err := bbolt.Open("./bolt_"+*raftId, 0666, nil)
+	if err != nil {
+		log.Fatalf("failed to start bolt: %v", err)
+	}
 	nodeState := &fsm.NodeState{
 		Topics: db,
 	}
@@ -65,8 +77,69 @@ func main() {
 	leaderhealth.Setup(r, s, []string{"Example"})
 	raftadmin.Register(s, r)
 	reflection.Register(s)
+	NewMemberList(*raftId)
 	if err := s.Serve(sock); err != nil {
 		log.Fatalf("failed to serve: %v", err)
+	}
+}
+
+func NewMemberList(name string) {
+	list, err := memberlist.Create(MakeConfig(name))
+	if err != nil {
+		panic("Failed to create memberlist: " + err.Error())
+	}
+	if len(*rootNode) != 0 {
+		// Join an existing cluster by specifying at least one known member.
+		_, err := list.Join([]string{*rootNode})
+		if err != nil {
+			panic("Failed to join cluster: " + err.Error())
+		}
+	}
+	// Ask for members of the cluster
+	for _, member := range list.Members() {
+		log.Printf("Member: %s %s\n", member.Name, member.Addr)
+	}
+}
+
+func MakeConfig(name string) *memberlist.Config {
+	host, port, _ := net.SplitHostPort(*gossipAddress)
+	portInt, _ := strconv.Atoi(port)
+	return &memberlist.Config{
+		Name:                    name,
+		BindAddr:                host,
+		BindPort:                portInt,
+		AdvertiseAddr:           "",
+		AdvertisePort:           portInt,
+		ProtocolVersion:         memberlist.ProtocolVersion2Compatible,
+		TCPTimeout:              10 * time.Second,       // Timeout after 10 seconds
+		IndirectChecks:          3,                      // Use 3 nodes for the indirect ping
+		RetransmitMult:          4,                      // Retransmit a message 4 * log(N+1) nodes
+		SuspicionMult:           4,                      // Suspect a node for 4 * log(N+1) * Interval
+		SuspicionMaxTimeoutMult: 6,                      // For 10k nodes this will give a max timeout of 120 seconds
+		PushPullInterval:        30 * time.Second,       // Low frequency
+		ProbeTimeout:            500 * time.Millisecond, // Reasonable RTT time for LAN
+		ProbeInterval:           1 * time.Second,        // Failure check every second
+		DisableTcpPings:         false,                  // TCP pings are safe, even with mixed versions
+		AwarenessMaxMultiplier:  8,                      // Probe interval backs off to 8 seconds
+
+		GossipNodes:          3,                      // Gossip to 3 nodes
+		GossipInterval:       200 * time.Millisecond, // Gossip more rapidly
+		GossipToTheDeadTime:  30 * time.Second,       // Same as push/pull
+		GossipVerifyIncoming: true,
+		GossipVerifyOutgoing: true,
+
+		EnableCompression: true, // Enable compression by default
+
+		SecretKey: nil,
+		Keyring:   nil,
+
+		DNSConfigPath: "/etc/resolv.conf",
+
+		HandoffQueueDepth: 1024,
+		UDPBufferSize:     1400,
+		CIDRsAllowed:      nil, // same as allow all
+
+		QueueCheckInterval: 30 * time.Second,
 	}
 }
 

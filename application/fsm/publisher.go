@@ -3,8 +3,8 @@ package fsm
 import (
 	"github.com/Kapperchino/jet-application/util"
 	pb "github.com/Kapperchino/jet/proto"
+	"github.com/rs/zerolog/log"
 	"go.etcd.io/bbolt"
-	"log"
 )
 
 func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, error) {
@@ -38,7 +38,8 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 		return nil
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Error().Msg("Cannot get the latest raftIndex")
+		log.Err(err)
 		return nil, err
 	}
 	//no op if messages has already been written
@@ -51,14 +52,11 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 		if err != nil {
 			return err
 		}
-		if err != nil {
-			log.Fatal("Issue creating bucket")
-			return err
-		}
 		return nil
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Error().Msg("Cannot create topic")
+		log.Err(err)
 		return nil, err
 	}
 	for _, m := range req.GetMessages() {
@@ -78,7 +76,8 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 			}
 			byteProto, err := util.SerializeMessage(newMsg)
 			if err != nil {
-				log.Fatal(err)
+				log.Error().Msg("Error seralizing")
+				log.Err(err)
 				return err
 			}
 			err = b.Put(util.ULongToBytes(offset), byteProto)
@@ -89,7 +88,8 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 			return nil
 		})
 		if err != nil {
-			log.Fatal(err)
+			log.Error().Msg("Error Writing to topic")
+			log.Err(err)
 			return nil, err
 		}
 	}

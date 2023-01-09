@@ -3,14 +3,16 @@ package fsm
 import (
 	"github.com/Kapperchino/jet-application/util"
 	pb "github.com/Kapperchino/jet/proto"
+	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/raft"
+	"github.com/rs/zerolog/log"
 	"go.etcd.io/bbolt"
 	"io"
-	"log"
 )
 
 type NodeState struct {
-	Topics *bbolt.DB
+	Topics  *bbolt.DB
+	Members *memberlist.Memberlist
 }
 
 var _ raft.FSM = &NodeState{}
@@ -19,34 +21,35 @@ func (f *NodeState) Apply(l *raft.Log) interface{} {
 	operation := &pb.Write{}
 	err := util.DeserializeMessage(l.Data, operation)
 	if err != nil {
-		log.Fatal(err)
+		log.Error().Err(err)
+		return err
 	}
 	switch operation.Operation.(type) {
 	case *pb.Write_Publish:
 		res, err := f.Publish(operation.GetPublish(), l.Index)
 		if err != nil {
-			log.Fatal(err)
+			log.Error().Err(err)
 			return err
 		}
 		return res
 	case *pb.Write_CreateTopic:
 		res, err := f.CreateTopic(operation.GetCreateTopic())
 		if err != nil {
-			log.Fatal(err)
+			log.Error().Err(err)
 			return err
 		}
 		return res
 	case *pb.Write_CreateConsumer:
 		res, err := f.CreateConsumer(operation.GetCreateConsumer())
 		if err != nil {
-			log.Fatal(err)
+			log.Error().Err(err)
 			return err
 		}
 		return res
 	case *pb.Write_Consume:
 		res, err := f.Consume(operation.GetConsume())
 		if err != nil {
-			log.Fatal(err)
+			log.Error().Err(err)
 			return err
 		}
 		return res
