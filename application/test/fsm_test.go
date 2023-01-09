@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/raft"
 	boltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 	"go.etcd.io/bbolt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -27,11 +28,12 @@ import (
 	"time"
 )
 
-var (
-	myAddr string
+type FsmTest struct {
+	suite.Suite
 	client pb.ExampleClient
 	lis    *bufconn.Listener
-)
+	myAddr string
+}
 
 const (
 	bufSize  = 1024 * 1024 * 100
@@ -39,27 +41,28 @@ const (
 	testData = "./testData"
 )
 
-func TestMain(m *testing.M) {
+func (suite *FsmTest) SetupSuite() {
 	initFolders()
-	lis = bufconn.Listen(bufSize)
-	myAddr = "localhost:" + strconv.Itoa(rand.Int()%10000)
+	suite.lis = bufconn.Listen(bufSize)
+	suite.myAddr = "localhost:" + strconv.Itoa(rand.Int()%10000)
 	log.Printf("Starting the server")
-	go setupServer()
+	go setupServer(suite.myAddr, suite.lis)
 	time.Sleep(3 * time.Second)
 	log.Printf("Starting the client")
-	client = setupClient()
-	code := m.Run()
-	cleanup()
-	os.Exit(code)
+	suite.client = suite.setupClient()
 }
 
-func Test_Publish(t *testing.T) {
+func (suite *FsmTest) TearDownSuite() {
+	cleanup()
+}
+
+func (suite *FsmTest) Test_Publish() {
 	log.Printf("Creating topic")
-	_, err := client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
+	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
 		Topic:         "Test_Publish",
 		NumPartitions: 1,
 	})
-	assert.Nil(t, err)
+	assert.Nil(suite.T(), err)
 	var arr []*pb.KeyVal
 	token := make([]byte, 3*1024*1024)
 	rand.Read(token)
@@ -68,13 +71,13 @@ func Test_Publish(t *testing.T) {
 		Val: token,
 	})
 	for x := 0; x < 10; x++ {
-		res, err := publishMessages("Test_Publish", arr, 0)
-		assert.Nil(t, err)
-		assert.NotNil(t, res)
+		res, err := publishMessages(suite.client, "Test_Publish", arr, 0)
+		assert.Nil(suite.T(), err)
+		assert.NotNil(suite.T(), res)
 	}
 }
 
-func Test_Publish_No_Topic(t *testing.T) {
+func (suite *FsmTest) Test_Publish_No_Topic() {
 	var arr []*pb.KeyVal
 	token := make([]byte, 3*1024*1024)
 	rand.Read(token)
@@ -83,20 +86,20 @@ func Test_Publish_No_Topic(t *testing.T) {
 		Val: token,
 	})
 	for x := 0; x < 10; x++ {
-		_, err := publishMessages("Test_Publish_Err", arr, 0)
-		assert.NotNil(t, err)
+		_, err := publishMessages(suite.client, "Test_Publish_Err", arr, 0)
+		assert.NotNil(suite.T(), err)
 	}
 }
 
-func Test_Consume_No_Topic(t *testing.T) {
-	res, err := createConsumer("Test_Consume_Err")
-	assert.NotNil(t, err)
-	assert.Nil(t, res)
+func (suite *FsmTest) Test_Consume_No_Topic() {
+	res, err := createConsumer(suite.client, "Test_Consume_Err")
+	assert.NotNil(suite.T(), err)
+	assert.Nil(suite.T(), res)
 	err.Error()
 }
 
-func Test_Consume(t *testing.T) {
-	_, err := client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
+func (suite *FsmTest) Test_Consume() {
+	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
 		Topic:         "Test_Consume",
 		NumPartitions: 1,
 	})
@@ -108,26 +111,30 @@ func Test_Consume(t *testing.T) {
 		Val: token,
 	})
 	for x := 0; x < 10; x++ {
-		res, err := publishMessages("Test_Consume", arr, 0)
-		assert.Nil(t, err)
-		assert.NotNil(t, res)
+		res, err := publishMessages(suite.client, "Test_Consume", arr, 0)
+		assert.Nil(suite.T(), err)
+		assert.NotNil(suite.T(), res)
 	}
-	res, err := createConsumer("Test_Consume")
-	if assert.Nil(t, err) {
-		res1, err := consumeMessages("Test_Consume", res.ConsumerId)
-		assert.Nil(t, err)
-		assert.Equal(t, 10, len(res1.GetMessages()))
+	res, err := createConsumer(suite.client, "Test_Consume")
+	if assert.Nil(suite.T(), err) {
+		res1, err := consumeMessages(suite.client, "Test_Consume", res.ConsumerId)
+		assert.Nil(suite.T(), err)
+		assert.Equal(suite.T(), 10, len(res1.GetMessages()))
 	}
 }
 
-func createConsumer(topic string) (*pb.CreateConsumerResponse, error) {
+func TestFSMTestSuite(t *testing.T) {
+	suite.Run(t, new(FsmTest))
+}
+
+func createConsumer(client pb.ExampleClient, topic string) (*pb.CreateConsumerResponse, error) {
 	res, err := client.CreateConsumer(context.Background(), &pb.CreateConsumerRequest{
 		Topic: topic,
 	})
 	return res, err
 }
 
-func consumeMessages(topic string, consumerId int64) (*pb.ConsumeResponse, error) {
+func consumeMessages(client pb.ExampleClient, topic string, consumerId int64) (*pb.ConsumeResponse, error) {
 	res, err := client.Consume(context.Background(), &pb.ConsumeRequest{
 		Topic:      topic,
 		ConsumerId: consumerId,
@@ -135,7 +142,7 @@ func consumeMessages(topic string, consumerId int64) (*pb.ConsumeResponse, error
 	return res, err
 }
 
-func publishMessages(topic string, messages []*pb.KeyVal, partition int64) (*pb.PublishMessageResponse, error) {
+func publishMessages(client pb.ExampleClient, topic string, messages []*pb.KeyVal, partition int64) (*pb.PublishMessageResponse, error) {
 	res, err := client.PublishMessages(context.Background(), &pb.PublishMessageRequest{
 		Topic:     topic,
 		Partition: partition,
@@ -144,7 +151,7 @@ func publishMessages(topic string, messages []*pb.KeyVal, partition int64) (*pb.
 	return res, err
 }
 
-func setupServer() {
+func setupServer(myAddr string, lis *bufconn.Listener) {
 	_, _, err := net.SplitHostPort(myAddr)
 	if err != nil {
 		log.Fatalf("failed to parse local address (%q): %v", myAddr, err)
@@ -158,7 +165,7 @@ func setupServer() {
 		Topics: db,
 	}
 
-	r, tm, err := NewRaft("test", myAddr, nodeState)
+	r, tm, err := NewRaft("test", myAddr, nodeState, true)
 	if err != nil {
 		log.Fatalf("failed to start raft: %v", err)
 	}
@@ -176,7 +183,7 @@ func setupServer() {
 	}
 }
 
-func setupClient() pb.ExampleClient {
+func (suite *FsmTest) setupClient() pb.ExampleClient {
 	serviceConfig := `{"healthCheckConfig": {"serviceName": "Example"}, "loadBalancingConfig": [ { "round_robin": {} } ]}`
 	retryOpts := []grpc_retry.CallOption{
 		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(100 * time.Millisecond)),
@@ -185,7 +192,7 @@ func setupClient() pb.ExampleClient {
 	ctx := context.Background()
 	maxSize := 1 * 1024 * 1024 * 1024
 	conn, _ := grpc.DialContext(ctx, "bufnet",
-		grpc.WithContextDialer(bufDialer),
+		grpc.WithContextDialer(suite.bufDialer),
 		grpc.WithDefaultServiceConfig(serviceConfig), grpc.WithInsecure(),
 		grpc.WithDefaultCallOptions(grpc.WaitForReady(false),
 			grpc.MaxCallRecvMsgSize(maxSize),
@@ -207,7 +214,7 @@ func cleanup() {
 	}
 }
 
-func NewRaft(myID, myAddress string, fsm raft.FSM) (*raft.Raft, *transport.Manager, error) {
+func NewRaft(myID, myAddress string, fsm raft.FSM, bootStrap bool) (*raft.Raft, *transport.Manager, error) {
 	c := raft.DefaultConfig()
 	c.LocalID = raft.ServerID(myID)
 
@@ -234,22 +241,24 @@ func NewRaft(myID, myAddress string, fsm raft.FSM) (*raft.Raft, *transport.Manag
 		return nil, nil, fmt.Errorf("raft.NewRaft: %v", err)
 	}
 
-	cfg := raft.Configuration{
-		Servers: []raft.Server{
-			{
-				Suffrage: raft.Voter,
-				ID:       raft.ServerID(myID),
-				Address:  raft.ServerAddress(myAddress),
+	if bootStrap {
+		cfg := raft.Configuration{
+			Servers: []raft.Server{
+				{
+					Suffrage: raft.Voter,
+					ID:       raft.ServerID(myID),
+					Address:  raft.ServerAddress(myAddress),
+				},
 			},
-		},
-	}
-	f := r.BootstrapCluster(cfg)
-	if err := f.Error(); err != nil {
-		return nil, nil, fmt.Errorf("raft.Raft.BootstrapCluster: %v", err)
+		}
+		f := r.BootstrapCluster(cfg)
+		if err := f.Error(); err != nil {
+			return nil, nil, fmt.Errorf("raft.Raft.BootstrapCluster: %v", err)
+		}
 	}
 	return r, tm, nil
 }
 
-func bufDialer(context.Context, string) (net.Conn, error) {
-	return lis.Dial()
+func (suite *FsmTest) bufDialer(context.Context, string) (net.Conn, error) {
+	return suite.lis.Dial()
 }
