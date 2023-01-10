@@ -7,14 +7,6 @@ service Example {
   rpc CreateConsumer(CreateConsumerRequest) returns (CreateConsumerResponse) {}
   rpc Consume(ConsumeRequest) returns (ConsumeResponse) {}
   rpc CreateTopic(CreateTopicRequest) returns (CreateTopicResponse) {}
-  rpc GetPeers(GetPeersRequest) returns (GetPeersResponse) {}
-}
-
-message GetPeersRequest {
-}
-
-message GetPeersResponse {
-  repeated string peers = 1;
 }
 
 message PublishMessageRequest {

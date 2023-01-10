@@ -6,6 +6,8 @@ import (
 	application "github.com/Kapperchino/jet-application"
 	"github.com/Kapperchino/jet-application/fsm"
 	pb "github.com/Kapperchino/jet-application/proto"
+	cluster "github.com/Kapperchino/jet-cluster"
+	clusterPb "github.com/Kapperchino/jet-cluster/proto"
 	"github.com/Kapperchino/jet-leader-rpc/leaderhealth"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/hashicorp/memberlist"
@@ -28,7 +30,7 @@ import (
 // functionality from testify - including assertion methods.
 type ClusterTest struct {
 	suite.Suite
-	client pb.ExampleClient
+	client clusterPb.ClusterMetaServiceClient
 	lis    [2]*bufconn.Listener
 	myAddr string
 }
@@ -56,7 +58,7 @@ func (suite *ClusterTest) TearDownSuite() {
 // All methods that begin with "Test" are run as tests within a
 // suite.
 func (suite *ClusterTest) TestMemberList() {
-	res, err := suite.client.GetPeers(context.Background(), &pb.GetPeersRequest{})
+	res, err := suite.client.GetPeers(context.Background(), &clusterPb.GetPeersRequest{})
 	assert.Nil(suite.T(), err)
 	assert.Equal(suite.T(), len(res.Peers), 2)
 }
@@ -101,6 +103,9 @@ func (suite *ClusterTest) setupServer(address string, nodeName string, gossipAdd
 		NodeState: nodeState,
 		Raft:      r,
 	})
+	clusterPb.RegisterClusterMetaServiceServer(s, &cluster.RpcInterface{
+		NodeState: nodeState,
+	})
 	tm.Register(s)
 	leaderhealth.Setup(r, s, []string{"Example"})
 	raftadmin.Register(s, r)
@@ -129,7 +134,7 @@ func NewMemberList(name string, rootNode string, gossipAddress string) *memberli
 	return list
 }
 
-func (suite *ClusterTest) setupClient(lis *bufconn.Listener) pb.ExampleClient {
+func (suite *ClusterTest) setupClient(lis *bufconn.Listener) clusterPb.ClusterMetaServiceClient {
 	serviceConfig := `{"healthCheckConfig": {"serviceName": "Example"}, "loadBalancingConfig": [ { "round_robin": {} } ]}`
 	retryOpts := []grpc_retry.CallOption{
 		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(100 * time.Millisecond)),
@@ -146,7 +151,7 @@ func (suite *ClusterTest) setupClient(lis *bufconn.Listener) pb.ExampleClient {
 			grpc.MaxCallRecvMsgSize(maxSize),
 			grpc.MaxCallSendMsgSize(maxSize)),
 		grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(retryOpts...)))
-	return pb.NewExampleClient(conn)
+	return clusterPb.NewClusterMetaServiceClient(conn)
 }
 
 func MakeConfig(name string, gossipAddress string) *memberlist.Config {

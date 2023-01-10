@@ -149,12 +149,3 @@ func (r RpcInterface) CreateTopic(_ context.Context, req *pb.CreateTopicRequest)
 	}
 	return res, nil
 }
-
-func (r RpcInterface) GetPeers(_ context.Context, req *pb.GetPeersRequest) (*pb.GetPeersResponse, error) {
-	members := r.NodeState.Members.Members()
-	arr := make([]string, len(members))
-	for x := 0; x < len(arr); x++ {
-		arr[x] = members[x].Name
-	}
-	return &pb.GetPeersResponse{Peers: arr}, nil
-}

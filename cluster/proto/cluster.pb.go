@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.28.1
 // 	protoc        v3.21.12
-// source: service.proto
+// source: cluster.proto
 
 package proto
 
@@ -29,7 +29,7 @@ type GetPeersRequest struct {
 func (x *GetPeersRequest) Reset() {
 	*x = GetPeersRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_service_proto_msgTypes[0]
+		mi := &file_cluster_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -42,7 +42,7 @@ func (x *GetPeersRequest) String() string {
 func (*GetPeersRequest) ProtoMessage() {}
 
 func (x *GetPeersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_service_proto_msgTypes[0]
+	mi := &file_cluster_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -55,7 +55,7 @@ func (x *GetPeersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPeersRequest.ProtoReflect.Descriptor instead.
 func (*GetPeersRequest) Descriptor() ([]byte, []int) {
-	return file_service_proto_rawDescGZIP(), []int{0}
+	return file_cluster_proto_rawDescGZIP(), []int{0}
 }
 
 type GetPeersResponse struct {
@@ -69,7 +69,7 @@ type GetPeersResponse struct {
 func (x *GetPeersResponse) Reset() {
 	*x = GetPeersResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_service_proto_msgTypes[1]
+		mi := &file_cluster_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -82,7 +82,7 @@ func (x *GetPeersResponse) String() string {
 func (*GetPeersResponse) ProtoMessage() {}
 
 func (x *GetPeersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_service_proto_msgTypes[1]
+	mi := &file_cluster_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -95,7 +95,7 @@ func (x *GetPeersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPeersResponse.ProtoReflect.Descriptor instead.
 func (*GetPeersResponse) Descriptor() ([]byte, []int) {
-	return file_service_proto_rawDescGZIP(), []int{1}
+	return file_cluster_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *GetPeersResponse) GetPeers() []string {
@@ -105,10 +105,10 @@ func (x *GetPeersResponse) GetPeers() []string {
 	return nil
 }
 
-var File_service_proto protoreflect.FileDescriptor
+var File_cluster_proto protoreflect.FileDescriptor
 
-var file_service_proto_rawDesc = []byte{
-	0x0a, 0x0d, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22,
+var file_cluster_proto_rawDesc = []byte{
+	0x0a, 0x0d, 0x63, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22,
 	0x11, 0x0a, 0x0f, 0x47, 0x65, 0x74, 0x50, 0x65, 0x65, 0x72, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65,
 	0x73, 0x74, 0x22, 0x28, 0x0a, 0x10, 0x47, 0x65, 0x74, 0x50, 0x65, 0x65, 0x72, 0x73, 0x52, 0x65,
 	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x70, 0x65, 0x65, 0x72, 0x73, 0x18,
@@ -117,30 +117,30 @@ var file_service_proto_rawDesc = []byte{
 	0x63, 0x65, 0x12, 0x31, 0x0a, 0x08, 0x47, 0x65, 0x74, 0x50, 0x65, 0x65, 0x72, 0x73, 0x12, 0x10,
 	0x2e, 0x47, 0x65, 0x74, 0x50, 0x65, 0x65, 0x72, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
 	0x1a, 0x11, 0x2e, 0x47, 0x65, 0x74, 0x50, 0x65, 0x65, 0x72, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f,
-	0x6e, 0x73, 0x65, 0x22, 0x00, 0x42, 0x22, 0x5a, 0x20, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
+	0x6e, 0x73, 0x65, 0x22, 0x00, 0x42, 0x2a, 0x5a, 0x28, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
 	0x63, 0x6f, 0x6d, 0x2f, 0x4b, 0x61, 0x70, 0x70, 0x65, 0x72, 0x63, 0x68, 0x69, 0x6e, 0x6f, 0x2f,
-	0x6a, 0x65, 0x74, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x33,
+	0x6a, 0x65, 0x74, 0x2f, 0x63, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x2f, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
-	file_service_proto_rawDescOnce sync.Once
-	file_service_proto_rawDescData = file_service_proto_rawDesc
+	file_cluster_proto_rawDescOnce sync.Once
+	file_cluster_proto_rawDescData = file_cluster_proto_rawDesc
 )
 
-func file_service_proto_rawDescGZIP() []byte {
-	file_service_proto_rawDescOnce.Do(func() {
-		file_service_proto_rawDescData = protoimpl.X.CompressGZIP(file_service_proto_rawDescData)
+func file_cluster_proto_rawDescGZIP() []byte {
+	file_cluster_proto_rawDescOnce.Do(func() {
+		file_cluster_proto_rawDescData = protoimpl.X.CompressGZIP(file_cluster_proto_rawDescData)
 	})
-	return file_service_proto_rawDescData
+	return file_cluster_proto_rawDescData
 }
 
-var file_service_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_service_proto_goTypes = []interface{}{
+var file_cluster_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_cluster_proto_goTypes = []interface{}{
 	(*GetPeersRequest)(nil),  // 0: GetPeersRequest
 	(*GetPeersResponse)(nil), // 1: GetPeersResponse
 }
-var file_service_proto_depIdxs = []int32{
+var file_cluster_proto_depIdxs = []int32{
 	0, // 0: ClusterMetaService.GetPeers:input_type -> GetPeersRequest
 	1, // 1: ClusterMetaService.GetPeers:output_type -> GetPeersResponse
 	1, // [1:2] is the sub-list for method output_type
@@ -150,13 +150,13 @@ var file_service_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_service_proto_init() }
-func file_service_proto_init() {
-	if File_service_proto != nil {
+func init() { file_cluster_proto_init() }
+func file_cluster_proto_init() {
+	if File_cluster_proto != nil {
 		return
 	}
 	if !protoimpl.UnsafeEnabled {
-		file_service_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
+		file_cluster_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*GetPeersRequest); i {
 			case 0:
 				return &v.state
@@ -168,7 +168,7 @@ func file_service_proto_init() {
 				return nil
 			}
 		}
-		file_service_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+		file_cluster_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*GetPeersResponse); i {
 			case 0:
 				return &v.state
@@ -185,18 +185,18 @@ func file_service_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: file_service_proto_rawDesc,
+			RawDescriptor: file_cluster_proto_rawDesc,
 			NumEnums:      0,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_service_proto_goTypes,
-		DependencyIndexes: file_service_proto_depIdxs,
-		MessageInfos:      file_service_proto_msgTypes,
+		GoTypes:           file_cluster_proto_goTypes,
+		DependencyIndexes: file_cluster_proto_depIdxs,
+		MessageInfos:      file_cluster_proto_msgTypes,
 	}.Build()
-	File_service_proto = out.File
-	file_service_proto_rawDesc = nil
-	file_service_proto_goTypes = nil
-	file_service_proto_depIdxs = nil
+	File_cluster_proto = out.File
+	file_cluster_proto_rawDesc = nil
+	file_cluster_proto_goTypes = nil
+	file_cluster_proto_depIdxs = nil
 }

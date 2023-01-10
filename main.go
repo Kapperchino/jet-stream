@@ -7,6 +7,8 @@ import (
 	application "github.com/Kapperchino/jet-application"
 	"github.com/Kapperchino/jet-application/fsm"
 	pb "github.com/Kapperchino/jet-application/proto"
+	cluster "github.com/Kapperchino/jet-cluster"
+	clusterPb "github.com/Kapperchino/jet-cluster/proto"
 	"github.com/hashicorp/memberlist"
 	"github.com/rs/zerolog"
 	"go.etcd.io/bbolt"
@@ -74,6 +76,9 @@ func main() {
 	pb.RegisterExampleServer(s, &application.RpcInterface{
 		NodeState: nodeState,
 		Raft:      r,
+	})
+	clusterPb.RegisterClusterMetaServiceServer(s, &cluster.RpcInterface{
+		NodeState: nodeState,
 	})
 	tm.Register(s)
 	leaderhealth.Setup(r, s, []string{"Example"})
