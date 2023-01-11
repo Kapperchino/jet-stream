@@ -11,12 +11,13 @@ import (
 	clusterPb "github.com/Kapperchino/jet-cluster/proto"
 	"github.com/hashicorp/memberlist"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"go.etcd.io/bbolt"
-	"log"
 	"net"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Kapperchino/jet-admin"
@@ -43,24 +44,38 @@ func main() {
 	flag.Parse()
 
 	if *raftId == "" {
-		log.Fatalf("flag --raft_id is required")
+		log.Fatal()
+	}
+	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}
+	output.FormatLevel = func(i interface{}) string {
+		return strings.ToUpper(fmt.Sprintf("| %-6s|", i))
+	}
+	output.FormatMessage = func(i interface{}) string {
+		return fmt.Sprintf("***%s****", i)
+	}
+	output.FormatFieldName = func(i interface{}) string {
+		return fmt.Sprintf("%s:", i)
+	}
+	output.FormatFieldValue = func(i interface{}) string {
+		return strings.ToUpper(fmt.Sprintf("%s", i))
 	}
 
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	log.Logger = zerolog.New(output).With().Timestamp().Logger()
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 
 	ctx := context.Background()
 	_, port, err := net.SplitHostPort(*myAddr)
 	if err != nil {
-		log.Fatalf("failed to parse local address (%q): %v", *myAddr, err)
+		log.Fatal().Msgf("failed to parse local address (%q): %v", *myAddr, err)
 	}
 	sock, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatal().Msgf("failed to listen: %v", err)
 	}
 
 	db, err := bbolt.Open("./bolt_"+*raftId, 0666, nil)
 	if err != nil {
-		log.Fatalf("failed to start bolt: %v", err)
+		log.Fatal().Msgf("failed to start bolt: %v", err)
 	}
 	list := NewMemberList(*raftId)
 	nodeState := &fsm.NodeState{
@@ -70,7 +85,7 @@ func main() {
 
 	r, tm, err := NewRaft(ctx, *raftId, *myAddr, nodeState)
 	if err != nil {
-		log.Fatalf("failed to start raft: %v", err)
+		log.Fatal().Msgf("failed to start raft: %v", err)
 	}
 	s := grpc.NewServer()
 	pb.RegisterExampleServer(s, &application.RpcInterface{
@@ -79,13 +94,14 @@ func main() {
 	})
 	clusterPb.RegisterClusterMetaServiceServer(s, &cluster.RpcInterface{
 		NodeState: nodeState,
+		Raft:      r,
 	})
 	tm.Register(s)
 	leaderhealth.Setup(r, s, []string{"Example"})
 	raftadmin.Register(s, r)
 	reflection.Register(s)
 	if err := s.Serve(sock); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		log.Fatal().Msgf("failed to serve: %v", err)
 	}
 }
 

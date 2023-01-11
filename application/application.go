@@ -46,6 +46,7 @@ func PublishMessagesInternal(r RpcInterface, req *pb.PublishMessageRequest) ([]*
 func (r RpcInterface) PublishMessages(ctx context.Context, req *pb.PublishMessageRequest) (*pb.PublishMessageResponse, error) {
 	messages, err := PublishMessagesInternal(r, req)
 	res := &pb.PublishMessageResponse{Messages: messages}
+	r.Raft.LastIndex()
 	if err != nil {
 		return nil, err
 	}

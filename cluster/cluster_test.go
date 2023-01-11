@@ -1,4 +1,4 @@
-package test
+package cluster
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	application "github.com/Kapperchino/jet-application"
 	"github.com/Kapperchino/jet-application/fsm"
 	pb "github.com/Kapperchino/jet-application/proto"
-	cluster "github.com/Kapperchino/jet-cluster"
+	"github.com/Kapperchino/jet-application/util"
 	clusterPb "github.com/Kapperchino/jet-cluster/proto"
 	"github.com/Kapperchino/jet-leader-rpc/leaderhealth"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
@@ -34,6 +34,12 @@ type ClusterTest struct {
 	lis    [2]*bufconn.Listener
 	myAddr string
 }
+
+const (
+	bufSize  = 1024 * 1024 * 100
+	raftDir  = "./testData/raft"
+	testData = "./testData"
+)
 
 // Make sure that VariableThatShouldStartAtFive is set to five
 // before each test
@@ -94,7 +100,7 @@ func (suite *ClusterTest) setupServer(address string, nodeName string, gossipAdd
 		Members: list,
 	}
 
-	r, tm, err := NewRaft(nodeName, address, nodeState, bootstrap)
+	r, tm, err := util.NewRaft(nodeName, address, nodeState, bootstrap, raftDir)
 	if err != nil {
 		log.Fatal().Msgf("failed to start raft: %v", err)
 	}
@@ -103,7 +109,7 @@ func (suite *ClusterTest) setupServer(address string, nodeName string, gossipAdd
 		NodeState: nodeState,
 		Raft:      r,
 	})
-	clusterPb.RegisterClusterMetaServiceServer(s, &cluster.RpcInterface{
+	clusterPb.RegisterClusterMetaServiceServer(s, &RpcInterface{
 		NodeState: nodeState,
 	})
 	tm.Register(s)
@@ -132,6 +138,13 @@ func NewMemberList(name string, rootNode string, gossipAddress string) *memberli
 		log.Printf("Member: %s %s\n", member.Name, member.Addr)
 	}
 	return list
+}
+
+func cleanup() {
+	err := os.RemoveAll(testData)
+	if err != nil {
+		return
+	}
 }
 
 func (suite *ClusterTest) setupClient(lis *bufconn.Listener) clusterPb.ClusterMetaServiceClient {
