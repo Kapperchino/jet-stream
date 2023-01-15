@@ -1,0 +1,163 @@
+package test
+
+import (
+	"context"
+	"fmt"
+	raftadmin "github.com/Kapperchino/jet-admin"
+	adminPb "github.com/Kapperchino/jet-admin/proto"
+	application "github.com/Kapperchino/jet-application"
+	"github.com/Kapperchino/jet-application/fsm"
+	pb "github.com/Kapperchino/jet-application/proto"
+	"github.com/Kapperchino/jet-application/util"
+	"github.com/Kapperchino/jet-cluster"
+	clusterPb "github.com/Kapperchino/jet-cluster/proto"
+	"github.com/Kapperchino/jet-leader-rpc/leaderhealth"
+	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
+	"github.com/rs/zerolog/log"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
+	"go.etcd.io/bbolt"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
+	"net"
+	"os"
+	"testing"
+	"time"
+)
+
+// These tests are to test the raft functionalites of one shard (1 to 3 nodes)
+// The cluster tests is the one that tests the entire cluster consists of many shards
+type ShardsTest struct {
+	suite.Suite
+	client      [2]clusterPb.ClusterMetaServiceClient
+	adminClient adminPb.RaftAdminClient
+	address     [2]string
+	nodeName    [2]string
+}
+
+// Make sure that VariableThatShouldStartAtFive is set to five
+// before each test
+func (suite *ShardsTest) SetupSuite() {
+	suite.initFolders()
+	suite.address = [2]string{"localhost:8080", "localhost:8082"}
+	suite.nodeName = [2]string{"nodeA", "nodeB"}
+	log.Print("Starting the server")
+	go suite.setupServer(suite.address[0], suite.nodeName[0], "localhost:8081", "", true)
+	time.Sleep(5 * time.Second)
+	go suite.setupServer(suite.address[1], suite.nodeName[1], "localhost:8083", "localhost:8081", false)
+	time.Sleep(5 * time.Second)
+	log.Print("Starting the client")
+	suite.client[0] = suite.setupClient(suite.address[0])
+	suite.adminClient = suite.setupAdminClient(suite.address[0])
+
+	suite.client[1] = suite.setupClient(suite.address[1])
+	//adding nodeB to nodeA as a follower
+	_, err := suite.adminClient.AddVoter(context.Background(), &adminPb.AddVoterRequest{
+		Id:            "nodeB",
+		Address:       "localhost:8082",
+		PreviousIndex: 0,
+	})
+	assert.Nil(suite.T(), err)
+}
+
+func (suite *ShardsTest) TearDownSuite() {
+	cleanup()
+}
+
+// All methods that begin with "Test" are run as tests within a
+// suite.
+func (suite *ShardsTest) TestMemberList() {
+	res, err := suite.client[0].GetPeers(context.Background(), &clusterPb.GetPeersRequest{})
+	time.Sleep(10 * time.Second)
+	assert.Nil(suite.T(), err)
+	assert.Equal(suite.T(), len(res.Peers), 2)
+}
+
+// In order for 'go test' to run this suite, we need to create
+// a normal test function and pass our suite to suite.Run
+func TestShards(t *testing.T) {
+	suite.Run(t, new(ShardsTest))
+}
+
+func (suite *ShardsTest) initFolders() {
+	if err := os.MkdirAll(raftDir+"/nodeA/", os.ModePerm); err != nil {
+		log.Fatal().Err(err)
+	}
+	if err := os.Mkdir(raftDir+"/nodeB/", os.ModePerm); err != nil {
+		log.Fatal().Err(err)
+	}
+}
+
+func (suite *ShardsTest) setupServer(address string, nodeName string, gossipAddress string, rootNode string, bootstrap bool) {
+	_, port, err := net.SplitHostPort(address)
+	if err != nil {
+		log.Fatal().Msgf("failed to parse local address (%q): %v", address, err)
+	}
+	sock, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
+	if err != nil {
+		log.Fatal().Msgf("failed to listen: %v", err)
+	}
+	if err != nil {
+		log.Fatal().Msgf("failed to listen: %v", err)
+	}
+
+	db, _ := bbolt.Open("./testData/bolt_"+nodeName, 0666, nil)
+	list := NewMemberList(nodeName, rootNode, gossipAddress)
+	nodeState := &fsm.NodeState{
+		Topics:  db,
+		Members: list,
+	}
+
+	r, tm, err := util.NewRaft(nodeName, address, nodeState, bootstrap, raftDir)
+	if err != nil {
+		log.Fatal().Msgf("failed to start raft: %v", err)
+	}
+	s := grpc.NewServer()
+	pb.RegisterExampleServer(s, &application.RpcInterface{
+		NodeState: nodeState,
+		Raft:      r,
+	})
+	clusterPb.RegisterClusterMetaServiceServer(s, &cluster.RpcInterface{
+		NodeState: nodeState,
+	})
+	tm.Register(s)
+	leaderhealth.Setup(r, s, []string{"Example"})
+	raftadmin.Register(s, r)
+	reflection.Register(s)
+
+	if err := s.Serve(sock); err != nil {
+		log.Fatal().Msgf("failed to serve: %v", err)
+	}
+}
+
+func (suite *ShardsTest) setupClient(address string) clusterPb.ClusterMetaServiceClient {
+	serviceConfig := `{"healthCheckConfig": {"serviceName": "Example"}, "loadBalancingConfig": [ { "round_robin": {} } ]}`
+	retryOpts := []grpc_retry.CallOption{
+		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(100 * time.Millisecond)),
+		grpc_retry.WithMax(5),
+	}
+	maxSize := 1 * 1024 * 1024 * 1024
+	conn, _ := grpc.Dial(address,
+		grpc.WithDefaultServiceConfig(serviceConfig), grpc.WithInsecure(),
+		grpc.WithDefaultCallOptions(grpc.WaitForReady(false),
+			grpc.MaxCallRecvMsgSize(maxSize),
+			grpc.MaxCallSendMsgSize(maxSize)),
+		grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(retryOpts...)))
+	return clusterPb.NewClusterMetaServiceClient(conn)
+}
+
+func (suite *ShardsTest) setupAdminClient(address string) adminPb.RaftAdminClient {
+	serviceConfig := `{"healthCheckConfig": {"serviceName": "Example"}, "loadBalancingConfig": [ { "round_robin": {} } ]}`
+	retryOpts := []grpc_retry.CallOption{
+		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(100 * time.Millisecond)),
+		grpc_retry.WithMax(5),
+	}
+	maxSize := 1 * 1024 * 1024 * 1024
+	conn, _ := grpc.Dial(address,
+		grpc.WithDefaultServiceConfig(serviceConfig), grpc.WithInsecure(),
+		grpc.WithDefaultCallOptions(grpc.WaitForReady(false),
+			grpc.MaxCallRecvMsgSize(maxSize),
+			grpc.MaxCallSendMsgSize(maxSize)),
+		grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(retryOpts...)))
+	return adminPb.NewRaftAdminClient(conn)
+}

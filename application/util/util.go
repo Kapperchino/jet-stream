@@ -3,20 +3,29 @@ package util
 import (
 	"fmt"
 	transport "github.com/Kapperchino/jet-transport"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
 	boltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 func NewRaft(myID, myAddress string, fsm raft.FSM, bootStrap bool, raftDir string) (*raft.Raft, *transport.Manager, error) {
 
 	c := raft.DefaultConfig()
 	c.LocalID = raft.ServerID(myID)
+	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006/01/02 15:04:05"}
+	output.FormatLevel = func(i interface{}) string {
+		return ""
+	}
+	c.Logger = hclog.New(&hclog.LoggerOptions{
+		Name:        "raft",
+		Level:       hclog.Debug,
+		DisableTime: true,
+		Output:      newRaftLogger(output),
+	})
 
 	baseDir := filepath.Join(raftDir, myID)
 	ldb, err := boltdb.NewBoltStore(filepath.Join(baseDir, "logs.dat"))
@@ -40,20 +49,6 @@ func NewRaft(myID, myAddress string, fsm raft.FSM, bootStrap bool, raftDir strin
 	if err != nil {
 		return nil, nil, fmt.Errorf("raft.NewRaft: %v", err)
 	}
-
-	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02 15:04:05"}
-	output.FormatLevel = func(i interface{}) string {
-		return strings.ToUpper(fmt.Sprintf("[%-4s]", i))
-	}
-	output.FormatFieldName = func(i interface{}) string {
-		return fmt.Sprintf("%s:", i)
-	}
-	output.FormatFieldValue = func(i interface{}) string {
-		return strings.ToUpper(fmt.Sprintf("%s", i))
-	}
-
-	log.Logger = zerolog.New(output).With().Timestamp().Logger()
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 
 	if bootStrap {
 		cfg := raft.Configuration{

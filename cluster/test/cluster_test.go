@@ -1,4 +1,4 @@
-package cluster
+package test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"github.com/Kapperchino/jet-application/fsm"
 	pb "github.com/Kapperchino/jet-application/proto"
 	"github.com/Kapperchino/jet-application/util"
+	"github.com/Kapperchino/jet-cluster"
 	clusterPb "github.com/Kapperchino/jet-cluster/proto"
 	"github.com/Kapperchino/jet-leader-rpc/leaderhealth"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
@@ -71,7 +72,7 @@ func (suite *ClusterTest) TestMemberList() {
 
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
-func TestExampleTestSuite(t *testing.T) {
+func TestClusters(t *testing.T) {
 	suite.Run(t, new(ClusterTest))
 }
 
@@ -109,7 +110,7 @@ func (suite *ClusterTest) setupServer(address string, nodeName string, gossipAdd
 		NodeState: nodeState,
 		Raft:      r,
 	})
-	clusterPb.RegisterClusterMetaServiceServer(s, &RpcInterface{
+	clusterPb.RegisterClusterMetaServiceServer(s, &cluster.RpcInterface{
 		NodeState: nodeState,
 	})
 	tm.Register(s)
@@ -122,7 +123,7 @@ func (suite *ClusterTest) setupServer(address string, nodeName string, gossipAdd
 }
 
 func NewMemberList(name string, rootNode string, gossipAddress string) *memberlist.Memberlist {
-	list, err := memberlist.Create(MakeConfig(name, gossipAddress))
+	list, err := memberlist.Create(util.MakeConfig(name, gossipAddress))
 	if err != nil {
 		panic("Failed to create memberlist: " + err.Error())
 	}
@@ -165,15 +166,4 @@ func (suite *ClusterTest) setupClient(lis *bufconn.Listener) clusterPb.ClusterMe
 			grpc.MaxCallSendMsgSize(maxSize)),
 		grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(retryOpts...)))
 	return clusterPb.NewClusterMetaServiceClient(conn)
-}
-
-func MakeConfig(name string, gossipAddress string) *memberlist.Config {
-	host, port, _ := net.SplitHostPort(gossipAddress)
-	portInt, _ := strconv.Atoi(port)
-	conf := memberlist.DefaultLANConfig()
-	conf.Name = name
-	conf.BindAddr = host
-	conf.BindPort = portInt
-	conf.AdvertisePort = portInt
-	return conf
 }

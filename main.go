@@ -4,29 +4,25 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/Kapperchino/jet-admin"
 	application "github.com/Kapperchino/jet-application"
 	"github.com/Kapperchino/jet-application/fsm"
 	pb "github.com/Kapperchino/jet-application/proto"
+	"github.com/Kapperchino/jet-application/util"
 	cluster "github.com/Kapperchino/jet-cluster"
 	clusterPb "github.com/Kapperchino/jet-cluster/proto"
+	"github.com/Kapperchino/jet-leader-rpc/leaderhealth"
+	transport "github.com/Kapperchino/jet-transport"
 	"github.com/hashicorp/memberlist"
-	"github.com/rs/zerolog"
+	"github.com/hashicorp/raft"
+	boltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/rs/zerolog/log"
 	"go.etcd.io/bbolt"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 	"net"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
-	"time"
-
-	"github.com/Kapperchino/jet-admin"
-	"github.com/Kapperchino/jet-leader-rpc/leaderhealth"
-	transport "github.com/Kapperchino/jet-transport"
-	"github.com/hashicorp/raft"
-	boltdb "github.com/hashicorp/raft-boltdb"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 )
 
 var (
@@ -46,22 +42,6 @@ func main() {
 	if *raftId == "" {
 		log.Fatal()
 	}
-	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}
-	output.FormatLevel = func(i interface{}) string {
-		return strings.ToUpper(fmt.Sprintf("| %-6s|", i))
-	}
-	output.FormatMessage = func(i interface{}) string {
-		return fmt.Sprintf("***%s****", i)
-	}
-	output.FormatFieldName = func(i interface{}) string {
-		return fmt.Sprintf("%s:", i)
-	}
-	output.FormatFieldValue = func(i interface{}) string {
-		return strings.ToUpper(fmt.Sprintf("%s", i))
-	}
-
-	log.Logger = zerolog.New(output).With().Timestamp().Logger()
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 
 	ctx := context.Background()
 	_, port, err := net.SplitHostPort(*myAddr)
@@ -106,7 +86,7 @@ func main() {
 }
 
 func NewMemberList(name string) *memberlist.Memberlist {
-	list, err := memberlist.Create(MakeConfig(name))
+	list, err := memberlist.Create(util.MakeConfig(name, *gossipAddress))
 	if err != nil {
 		panic("Failed to create memberlist: " + err.Error())
 	}
@@ -119,55 +99,14 @@ func NewMemberList(name string) *memberlist.Memberlist {
 	}
 	// Ask for members of the cluster
 	for _, member := range list.Members() {
-		log.Printf("Member: %s %s\n", member.Name, member.Addr)
+		log.Printf("Member: %s %s", member.Name, member.Addr)
 	}
 	return list
 }
 
-func MakeConfig(name string) *memberlist.Config {
-	host, port, _ := net.SplitHostPort(*gossipAddress)
-	portInt, _ := strconv.Atoi(port)
-	return &memberlist.Config{
-		Name:                    name,
-		BindAddr:                host,
-		BindPort:                portInt,
-		AdvertiseAddr:           "",
-		AdvertisePort:           portInt,
-		ProtocolVersion:         memberlist.ProtocolVersion2Compatible,
-		TCPTimeout:              10 * time.Second,       // Timeout after 10 seconds
-		IndirectChecks:          3,                      // Use 3 nodes for the indirect ping
-		RetransmitMult:          4,                      // Retransmit a message 4 * log(N+1) nodes
-		SuspicionMult:           4,                      // Suspect a node for 4 * log(N+1) * Interval
-		SuspicionMaxTimeoutMult: 6,                      // For 10k nodes this will give a max timeout of 120 seconds
-		PushPullInterval:        30 * time.Second,       // Low frequency
-		ProbeTimeout:            500 * time.Millisecond, // Reasonable RTT time for LAN
-		ProbeInterval:           1 * time.Second,        // Failure check every second
-		DisableTcpPings:         false,                  // TCP pings are safe, even with mixed versions
-		AwarenessMaxMultiplier:  8,                      // Probe interval backs off to 8 seconds
-
-		GossipNodes:          3,                      // Gossip to 3 nodes
-		GossipInterval:       200 * time.Millisecond, // Gossip more rapidly
-		GossipToTheDeadTime:  30 * time.Second,       // Same as push/pull
-		GossipVerifyIncoming: true,
-		GossipVerifyOutgoing: true,
-
-		EnableCompression: true, // Enable compression by default
-
-		SecretKey: nil,
-		Keyring:   nil,
-
-		DNSConfigPath: "/etc/resolv.conf",
-
-		HandoffQueueDepth: 1024,
-		UDPBufferSize:     1400,
-		CIDRsAllowed:      nil, // same as allow all
-
-		QueueCheckInterval: 30 * time.Second,
-	}
-}
-
 func NewRaft(ctx context.Context, myID, myAddress string, fsm raft.FSM) (*raft.Raft, *transport.Manager, error) {
 	c := raft.DefaultConfig()
+	c.LogOutput = util.Logging.Writer
 	c.LocalID = raft.ServerID(myID)
 
 	baseDir := filepath.Join(*raftDir, myID)
