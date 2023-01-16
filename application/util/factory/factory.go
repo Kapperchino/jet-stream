@@ -12,6 +12,7 @@ import (
 	"github.com/Kapperchino/jet-leader-rpc/leaderhealth"
 	transport "github.com/Kapperchino/jet-transport"
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/raft"
 	boltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/rs/zerolog"
@@ -109,7 +110,14 @@ func SetupServer(raftDir string, address string, nodeName string, gossipAddress 
 		Raft:      r,
 	})
 	clusterState := cluster.ClusterState{
-		ShardId: nodeName,
+		NodeId: nodeName,
+	}
+	if bootstrap {
+		id, err := uuid.GenerateUUID()
+		if err != nil {
+			log.Fatal().Msgf("failed to create id raft: %v", err)
+		}
+		clusterState.ShardId = id
 	}
 	clusterRpc := &cluster.RpcInterface{
 		ClusterState: &clusterState,

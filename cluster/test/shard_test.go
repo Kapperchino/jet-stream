@@ -58,6 +58,7 @@ func (suite *ShardsTest) TearDownSuite() {
 // suite.
 func (suite *ShardsTest) TestMemberList() {
 	res, err := suite.client[0].GetPeers(context.Background(), &clusterPb.GetPeersRequest{})
+	time.Sleep(30 * time.Second)
 	assert.Nil(suite.T(), err)
 	assert.Equal(suite.T(), len(res.Peers), 2)
 }
