@@ -17,7 +17,7 @@ type RpcInterface struct {
 }
 
 type ClusterState struct {
-	shardId  string
+	ShardId  string
 	isLeader bool
 	shardMap haxmap.Map[string, ShardInfo]
 	raftChan chan raft.Observation
@@ -29,18 +29,19 @@ type ShardInfo struct {
 	isLeader bool
 }
 
-func (i *RpcInterface) InitClusterState(memberlist *memberlist.Memberlist) {
+func InitClusterState(memberlist *memberlist.Memberlist, i *RpcInterface) {
 	i.ClusterState = &ClusterState{
 		isLeader: false,
 		shardMap: haxmap.Map[string, ShardInfo]{},
-		raftChan: make(chan raft.Observation, 100),
+		raftChan: make(chan raft.Observation, 3),
 		Members:  memberlist,
 	}
-	raft.NewObserver(i.ClusterState.raftChan, false, nil)
-	go onRaftUpdates(i.ClusterState.raftChan)
+	observer := raft.NewObserver(i.ClusterState.raftChan, false, nil)
+	i.Raft.RegisterObserver(observer)
+	go onRaftUpdates(i.ClusterState.raftChan, i)
 }
 
-func onRaftUpdates(raftChan chan raft.Observation) {
+func onRaftUpdates(raftChan chan raft.Observation, i *RpcInterface) {
 	for {
 		time.Sleep(time.Second * 3)
 		select {
@@ -51,9 +52,7 @@ func onRaftUpdates(raftChan chan raft.Observation) {
 				break
 			case raft.RaftState:
 				state := val.String()
-				if state == "Leader" {
-					log.Info().Msg("State is now leader")
-				}
+				log.Info().Msgf("State is now %s", state)
 				break
 			case raft.PeerObservation:
 				log.Info().Msg("peer observation")
@@ -64,7 +63,7 @@ func onRaftUpdates(raftChan chan raft.Observation) {
 			}
 			log.Debug().Msgf("received message %s", observable)
 		default:
-			log.Debug().Msgf("No updates for shard")
+			log.Debug().Msgf("No updates for shard %s", i.ClusterState.ShardId)
 		}
 	}
 

@@ -108,11 +108,14 @@ func SetupServer(raftDir string, address string, nodeName string, gossipAddress 
 		NodeState: nodeState,
 		Raft:      r,
 	})
-	clusterState := cluster.ClusterState{}
+	clusterState := cluster.ClusterState{
+		ShardId: nodeName,
+	}
 	clusterRpc := &cluster.RpcInterface{
 		ClusterState: &clusterState,
+		Raft:         r,
 	}
-	clusterRpc.InitClusterState(list)
+	cluster.InitClusterState(list, clusterRpc)
 	clusterPb.RegisterClusterMetaServiceServer(s, clusterRpc)
 	tm.Register(s)
 	leaderhealth.Setup(r, s, []string{"Example"})
@@ -142,8 +145,9 @@ func SetupMemServer(raftDir string, nodeName string, gossipAddress string, rootN
 	clusterState := cluster.ClusterState{}
 	clusterRpc := &cluster.RpcInterface{
 		ClusterState: &clusterState,
+		Raft:         r,
 	}
-	clusterRpc.InitClusterState(list)
+	cluster.InitClusterState(list, clusterRpc)
 	clusterPb.RegisterClusterMetaServiceServer(s, clusterRpc)
 	tm.Register(s)
 	leaderhealth.Setup(r, s, []string{"Example"})
