@@ -1,13 +1,34 @@
-package util
+package factory
 
 import (
+	"github.com/Kapperchino/jet-application/util"
 	"github.com/hashicorp/memberlist"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"net"
 	"os"
 	"strconv"
 	"time"
 )
+
+func NewMemberList(name string, rootNode string, gossipAddress string) *memberlist.Memberlist {
+	list, err := memberlist.Create(MakeConfig(name, gossipAddress))
+	if err != nil {
+		panic("Failed to create memberlist: " + err.Error())
+	}
+	if len(rootNode) != 0 {
+		// Join an existing cluster by specifying at least one known member.
+		_, err := list.Join([]string{rootNode})
+		if err != nil {
+			panic("Failed to join cluster: " + err.Error())
+		}
+	}
+	// Ask for members of the cluster
+	for _, member := range list.Members() {
+		log.Printf("Member: %s %s", member.Name, member.Addr)
+	}
+	return list
+}
 
 func MakeConfig(name string, gossipAddress string) *memberlist.Config {
 	host, port, _ := net.SplitHostPort(gossipAddress)
@@ -16,12 +37,12 @@ func MakeConfig(name string, gossipAddress string) *memberlist.Config {
 	output.FormatLevel = func(i interface{}) string {
 		return ""
 	}
-	stdLogger := newStdLoggerWithOutput(output)
+	stdLogger := util.NewStdLoggerWithOutput(output)
 	return &memberlist.Config{
 		Name:                    name,
 		BindAddr:                host,
 		BindPort:                portInt,
-		AdvertiseAddr:           "",
+		AdvertiseAddr:           "127.0.0.1",
 		AdvertisePort:           portInt,
 		ProtocolVersion:         memberlist.ProtocolVersion2Compatible,
 		TCPTimeout:              10 * time.Second,       // Timeout after 10 seconds

@@ -42,12 +42,12 @@ func createLogger() *Logger {
 	return &l
 }
 
-func newRaftLogger(output io.Writer) *zerolog.Logger {
+func NewRaftLogger(output io.Writer) *zerolog.Logger {
 	newLogger := Logging.Logger.With().Logger().Output(output)
 	return &newLogger
 }
 
-func newStdLoggerWithOutput(output io.Writer) *log2.Logger {
+func NewStdLoggerWithOutput(output io.Writer) *log2.Logger {
 	newLogger := Logging.Logger.With().Logger().Output(output)
 	stdLogger := log2.Logger{}
 	stdLogger.SetFlags(0)

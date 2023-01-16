@@ -2,24 +2,14 @@ package test
 
 import (
 	"context"
-	"fmt"
-	raftadmin "github.com/Kapperchino/jet-admin"
 	adminPb "github.com/Kapperchino/jet-admin/proto"
-	application "github.com/Kapperchino/jet-application"
-	"github.com/Kapperchino/jet-application/fsm"
-	pb "github.com/Kapperchino/jet-application/proto"
-	"github.com/Kapperchino/jet-application/util"
-	"github.com/Kapperchino/jet-cluster"
+	"github.com/Kapperchino/jet-application/util/factory"
 	clusterPb "github.com/Kapperchino/jet-cluster/proto"
-	"github.com/Kapperchino/jet-leader-rpc/leaderhealth"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"go.etcd.io/bbolt"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
-	"net"
 	"os"
 	"testing"
 	"time"
@@ -42,9 +32,9 @@ func (suite *ShardsTest) SetupSuite() {
 	suite.address = [2]string{"localhost:8080", "localhost:8082"}
 	suite.nodeName = [2]string{"nodeA", "nodeB"}
 	log.Print("Starting the server")
-	go suite.setupServer(suite.address[0], suite.nodeName[0], "localhost:8081", "", true)
+	go factory.SetupServer(raftDir, suite.address[0], suite.nodeName[0], "localhost:8081", "", true)
 	time.Sleep(5 * time.Second)
-	go suite.setupServer(suite.address[1], suite.nodeName[1], "localhost:8083", "localhost:8081", false)
+	go factory.SetupServer(raftDir, suite.address[1], suite.nodeName[1], "localhost:8083", "localhost:8081", false)
 	time.Sleep(5 * time.Second)
 	log.Print("Starting the client")
 	suite.client[0] = suite.setupClient(suite.address[0])
@@ -68,7 +58,6 @@ func (suite *ShardsTest) TearDownSuite() {
 // suite.
 func (suite *ShardsTest) TestMemberList() {
 	res, err := suite.client[0].GetPeers(context.Background(), &clusterPb.GetPeersRequest{})
-	time.Sleep(10 * time.Second)
 	assert.Nil(suite.T(), err)
 	assert.Equal(suite.T(), len(res.Peers), 2)
 }
@@ -85,48 +74,6 @@ func (suite *ShardsTest) initFolders() {
 	}
 	if err := os.Mkdir(raftDir+"/nodeB/", os.ModePerm); err != nil {
 		log.Fatal().Err(err)
-	}
-}
-
-func (suite *ShardsTest) setupServer(address string, nodeName string, gossipAddress string, rootNode string, bootstrap bool) {
-	_, port, err := net.SplitHostPort(address)
-	if err != nil {
-		log.Fatal().Msgf("failed to parse local address (%q): %v", address, err)
-	}
-	sock, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
-	if err != nil {
-		log.Fatal().Msgf("failed to listen: %v", err)
-	}
-	if err != nil {
-		log.Fatal().Msgf("failed to listen: %v", err)
-	}
-
-	db, _ := bbolt.Open("./testData/bolt_"+nodeName, 0666, nil)
-	list := NewMemberList(nodeName, rootNode, gossipAddress)
-	nodeState := &fsm.NodeState{
-		Topics:  db,
-		Members: list,
-	}
-
-	r, tm, err := util.NewRaft(nodeName, address, nodeState, bootstrap, raftDir)
-	if err != nil {
-		log.Fatal().Msgf("failed to start raft: %v", err)
-	}
-	s := grpc.NewServer()
-	pb.RegisterExampleServer(s, &application.RpcInterface{
-		NodeState: nodeState,
-		Raft:      r,
-	})
-	clusterPb.RegisterClusterMetaServiceServer(s, &cluster.RpcInterface{
-		NodeState: nodeState,
-	})
-	tm.Register(s)
-	leaderhealth.Setup(r, s, []string{"Example"})
-	raftadmin.Register(s, r)
-	reflection.Register(s)
-
-	if err := s.Serve(sock); err != nil {
-		log.Fatal().Msgf("failed to serve: %v", err)
 	}
 }
 

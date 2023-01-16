@@ -2,36 +2,45 @@ package cluster
 
 import (
 	"context"
-	"github.com/Kapperchino/jet-application/fsm"
 	pb "github.com/Kapperchino/jet-cluster/proto"
 	"github.com/alphadose/haxmap"
+	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/raft"
 	"github.com/rs/zerolog/log"
 	"time"
 )
 
 type RpcInterface struct {
-	NodeState *fsm.NodeState
-	Raft      *raft.Raft
+	Raft         *raft.Raft
+	ClusterState *ClusterState
 	pb.UnimplementedClusterMetaServiceServer
 }
 
-type ShardState struct {
-	shardId   string
-	isLeader  bool
-	memberMap haxmap.Map[string, string]
+type ClusterState struct {
+	shardId  string
+	isLeader bool
+	shardMap haxmap.Map[string, ShardInfo]
+	raftChan chan raft.Observation
+	Members  *memberlist.Memberlist
 }
 
-var raftChan chan raft.Observation
-
-func (s *ShardState) init() {
-	raftChan = make(chan raft.Observation, 100)
-	s.memberMap = haxmap.Map[string, string]{}
-	raft.NewObserver(raftChan, false, nil)
-	go s.onRaftUpdates(raftChan)
+type ShardInfo struct {
+	shardId  string
+	isLeader bool
 }
 
-func (s *ShardState) onRaftUpdates(raftChan chan raft.Observation) {
+func (i *RpcInterface) InitClusterState(memberlist *memberlist.Memberlist) {
+	i.ClusterState = &ClusterState{
+		isLeader: false,
+		shardMap: haxmap.Map[string, ShardInfo]{},
+		raftChan: make(chan raft.Observation, 100),
+		Members:  memberlist,
+	}
+	raft.NewObserver(i.ClusterState.raftChan, false, nil)
+	go onRaftUpdates(i.ClusterState.raftChan)
+}
+
+func onRaftUpdates(raftChan chan raft.Observation) {
 	for {
 		time.Sleep(time.Second * 3)
 		select {
@@ -62,7 +71,7 @@ func (s *ShardState) onRaftUpdates(raftChan chan raft.Observation) {
 }
 
 func (r RpcInterface) GetPeers(_ context.Context, req *pb.GetPeersRequest) (*pb.GetPeersResponse, error) {
-	members := r.NodeState.Members.Members()
+	members := r.ClusterState.Members.Members()
 	arr := make([]string, len(members))
 	for x := 0; x < len(arr); x++ {
 		arr[x] = members[x].Name

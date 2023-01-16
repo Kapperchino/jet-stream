@@ -3,7 +3,6 @@ package fsm
 import (
 	pb "github.com/Kapperchino/jet-application/proto"
 	"github.com/Kapperchino/jet-application/util"
-	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/raft"
 	"github.com/rs/zerolog/log"
 	"go.etcd.io/bbolt"
@@ -11,8 +10,7 @@ import (
 )
 
 type NodeState struct {
-	Topics  *bbolt.DB
-	Members *memberlist.Memberlist
+	Topics *bbolt.DB
 }
 
 var _ raft.FSM = &NodeState{}

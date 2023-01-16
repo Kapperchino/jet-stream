@@ -6,7 +6,7 @@ import (
 	application "github.com/Kapperchino/jet-application"
 	"github.com/Kapperchino/jet-application/fsm"
 	pb "github.com/Kapperchino/jet-application/proto"
-	"github.com/Kapperchino/jet-application/util"
+	"github.com/Kapperchino/jet-application/util/factory"
 	"github.com/Kapperchino/jet-leader-rpc/leaderhealth"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/stretchr/testify/assert"
@@ -161,7 +161,7 @@ func setupServer(myAddr string, lis *bufconn.Listener) {
 		Topics: db,
 	}
 
-	r, tm, err := util.NewRaft("test", myAddr, nodeState, true, raftDir)
+	r, tm, err := factory.NewRaft("test", myAddr, nodeState, true, raftDir)
 	if err != nil {
 		log.Fatalf("failed to start raft: %v", err)
 	}
