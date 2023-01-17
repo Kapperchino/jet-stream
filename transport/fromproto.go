@@ -9,7 +9,6 @@ func decodeAppendEntriesRequest(m *pb.AppendEntriesRequest) *raft.AppendEntriesR
 	return &raft.AppendEntriesRequest{
 		RPCHeader:         decodeRPCHeader(m.RpcHeader),
 		Term:              m.Term,
-		Leader:            m.Leader,
 		PrevLogEntry:      m.PrevLogEntry,
 		PrevLogTerm:       m.PrevLogTerm,
 		Entries:           decodeLogs(m.Entries),
@@ -20,6 +19,8 @@ func decodeAppendEntriesRequest(m *pb.AppendEntriesRequest) *raft.AppendEntriesR
 func decodeRPCHeader(m *pb.RPCHeader) raft.RPCHeader {
 	return raft.RPCHeader{
 		ProtocolVersion: raft.ProtocolVersion(m.ProtocolVersion),
+		Addr:            m.Addr,
+		ID:              m.Id,
 	}
 }
 
@@ -75,7 +76,6 @@ func decodeRequestVoteRequest(m *pb.RequestVoteRequest) *raft.RequestVoteRequest
 	return &raft.RequestVoteRequest{
 		RPCHeader:          decodeRPCHeader(m.RpcHeader),
 		Term:               m.Term,
-		Candidate:          m.Candidate,
 		LastLogIndex:       m.LastLogIndex,
 		LastLogTerm:        m.LastLogTerm,
 		LeadershipTransfer: m.LeadershipTransfer,
@@ -99,7 +99,6 @@ func decodeInstallSnapshotRequest(m *pb.InstallSnapshotRequest) *raft.InstallSna
 		Leader:             m.Leader,
 		LastLogIndex:       m.LastLogIndex,
 		LastLogTerm:        m.LastLogTerm,
-		Peers:              m.Peers,
 		Configuration:      m.Configuration,
 		ConfigurationIndex: m.ConfigurationIndex,
 		Size:               m.Size,

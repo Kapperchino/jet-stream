@@ -4,6 +4,8 @@ option go_package = "github.com/Kapperchino/jet/cluster/proto";
 
 service ClusterMetaService {
   rpc GetPeers(GetPeersRequest) returns (GetPeersResponse) {}
+  rpc GetClusterInfo(GetClusterInfoRequest) returns (GetClusterInfoResponse) {}
+  rpc GetShardInfo(GetShardInfoRequest) returns (GetShardInfoResponse) {}
 }
 
 message GetPeersRequest {
@@ -11,4 +13,27 @@ message GetPeersRequest {
 
 message GetPeersResponse {
   repeated string peers = 1;
+}
+
+message GetShardInfoRequest{
+}
+
+message GetShardInfoResponse{
+  ShardInfo info = 1;
+}
+
+message GetClusterInfoRequest{}
+
+message GetClusterInfoResponse{
+  ClusterInfo info = 1;
+}
+
+message ClusterInfo {
+  map<string, ShardInfo> shardMap = 1;
+}
+
+message ShardInfo {
+  map<string, string> memberAddressMap = 1;
+  string leaderId = 2;
+  string shardId = 3;
 }

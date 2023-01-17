@@ -34,10 +34,7 @@ func Report(r *raft.Raft, hs *health.Server, services []string) {
 }
 
 func setServingStatus(hs *health.Server, services []string, isLeader bool) {
-	v := grpc_health_v1.HealthCheckResponse_NOT_SERVING
-	if isLeader {
-		v = grpc_health_v1.HealthCheckResponse_SERVING
-	}
+	v := grpc_health_v1.HealthCheckResponse_SERVING
 	for _, srv := range services {
 		hs.SetServingStatus(srv, v)
 	}

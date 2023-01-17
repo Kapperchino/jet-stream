@@ -35,7 +35,6 @@ func (suite *ShardsTest) SetupSuite() {
 	go factory.SetupServer(raftDir, suite.address[0], suite.nodeName[0], "localhost:8081", "", true)
 	time.Sleep(5 * time.Second)
 	go factory.SetupServer(raftDir, suite.address[1], suite.nodeName[1], "localhost:8083", "localhost:8081", false)
-	time.Sleep(5 * time.Second)
 	log.Print("Starting the client")
 	suite.client[0] = suite.setupClient(suite.address[0])
 	suite.adminClient = suite.setupAdminClient(suite.address[0])
@@ -47,6 +46,7 @@ func (suite *ShardsTest) SetupSuite() {
 		Address:       "localhost:8082",
 		PreviousIndex: 0,
 	})
+	time.Sleep(5 * time.Second)
 	assert.Nil(suite.T(), err)
 }
 
@@ -54,13 +54,19 @@ func (suite *ShardsTest) TearDownSuite() {
 	cleanup()
 }
 
-// All methods that begin with "Test" are run as tests within a
-// suite.
-func (suite *ShardsTest) TestMemberList() {
-	res, err := suite.client[0].GetPeers(context.Background(), &clusterPb.GetPeersRequest{})
-	time.Sleep(30 * time.Second)
+func (suite *ShardsTest) TestGetShardInfo() {
+	res, err := suite.client[0].GetShardInfo(context.Background(), &clusterPb.GetShardInfoRequest{})
+	log.Info().Msgf("%+v", res)
 	assert.Nil(suite.T(), err)
-	assert.Equal(suite.T(), len(res.Peers), 2)
+	assert.Equal(suite.T(), len(res.GetInfo().MemberAddressMap), 2)
+}
+
+func (suite *ShardsTest) TestGetShardInfoPeer() {
+	res, err := suite.client[1].GetShardInfo(context.Background(), &clusterPb.GetShardInfoRequest{})
+	log.Info().Msgf("%+v", res)
+	assert.Nil(suite.T(), err)
+	assert.Equal(suite.T(), "nodeA", res.GetInfo().LeaderId)
+	assert.Equal(suite.T(), len(res.GetInfo().MemberAddressMap), 2)
 }
 
 // In order for 'go test' to run this suite, we need to create

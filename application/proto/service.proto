@@ -111,7 +111,23 @@ message CreateTopic{
 message CreateTopicResult{
 }
 
-message Write {
+message ShardInfo {
+  map<string, string> memberAddressMap = 1;
+  string leaderId = 2;
+  string shardId = 3;
+}
+
+message AddShardInfo{
+  ShardInfo info = 1;
+}
+
+message ClusterOperation {
+  oneof operation {
+    AddShardInfo addShard = 1;
+  }
+}
+
+message WriteOperation {
   oneof operation {
     Publish publish = 1;
     Consume consume = 2;

@@ -21,7 +21,7 @@ func main() {
 	flag.Parse()
 
 	if *raftId == "" {
-		log.Fatal()
+		log.Fatal().Msg("Cannot have null raftid")
 	}
 	factory.SetupServer(*raftDir, *myAddr, *raftId, *gossipAddress, *rootNode, *raftBootstrap)
 }

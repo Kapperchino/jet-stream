@@ -20,14 +20,15 @@ import (
 	"go.etcd.io/bbolt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/test/bufconn"
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func NewRaft(myID, myAddress string, fsm raft.FSM, bootStrap bool, raftDir string) (*raft.Raft, *transport.Manager, error) {
 	c := raft.DefaultConfig()
+	c.ProtocolVersion = raft.ProtocolVersionMax
 	c.LocalID = raft.ServerID(myID)
 	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006/01/02 15:04:05"}
 	output.FormatLevel = func(i interface{}) string {
@@ -109,59 +110,40 @@ func SetupServer(raftDir string, address string, nodeName string, gossipAddress 
 		NodeState: nodeState,
 		Raft:      r,
 	})
-	clusterState := cluster.ClusterState{
-		NodeId: nodeName,
-	}
+	shardId := ""
 	if bootstrap {
 		id, err := uuid.GenerateUUID()
 		if err != nil {
 			log.Fatal().Msgf("failed to create id raft: %v", err)
 		}
-		clusterState.ShardId = id
+		shardId = id
 	}
+	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006/01/02 15:04:05"}
+	output.FormatLevel = func(i interface{}) string {
+		return strings.ToUpper(fmt.Sprintf("[%-4s]", i))
+	}
+	output.FormatFieldName = func(i interface{}) string {
+		return fmt.Sprintf("%s:", i)
+	}
+	output.FormatFieldValue = func(i interface{}) string {
+		return strings.ToUpper(fmt.Sprintf("%s", i))
+	}
+	output.FormatMessage = func(i interface{}) string {
+		return fmt.Sprintf("[%s] %s", nodeName, i)
+	}
+	clusterLog := log.With().Logger().Output(output)
 	clusterRpc := &cluster.RpcInterface{
-		ClusterState: &clusterState,
+		ClusterState: nil,
 		Raft:         r,
+		Logger:       &clusterLog,
 	}
-	cluster.InitClusterState(list, clusterRpc)
+	clusterRpc.ClusterState = cluster.InitClusterState(list, clusterRpc, nodeName, address, shardId)
 	clusterPb.RegisterClusterMetaServiceServer(s, clusterRpc)
 	tm.Register(s)
-	leaderhealth.Setup(r, s, []string{"Example"})
+	leaderhealth.Setup(r, s, []string{"Example", "ClusterMetaService"})
 	raftadmin.Register(s, r)
 	reflection.Register(s)
 	if err := s.Serve(sock); err != nil {
-		log.Fatal().Msgf("failed to serve: %v", err)
-	}
-}
-
-func SetupMemServer(raftDir string, nodeName string, gossipAddress string, rootNode string, lis *bufconn.Listener, bootstrap bool) {
-	db, _ := bbolt.Open("./testData/bolt_"+nodeName, 0666, nil)
-	list := NewMemberList(nodeName, rootNode, gossipAddress)
-	nodeState := &fsm.NodeState{
-		Topics: db,
-	}
-
-	r, tm, err := NewRaft(nodeName, "joebiden", nodeState, bootstrap, raftDir)
-	if err != nil {
-		log.Fatal().Msgf("failed to start raft: %v", err)
-	}
-	s := grpc.NewServer()
-	pb.RegisterExampleServer(s, &application.RpcInterface{
-		NodeState: nodeState,
-		Raft:      r,
-	})
-	clusterState := cluster.ClusterState{}
-	clusterRpc := &cluster.RpcInterface{
-		ClusterState: &clusterState,
-		Raft:         r,
-	}
-	cluster.InitClusterState(list, clusterRpc)
-	clusterPb.RegisterClusterMetaServiceServer(s, clusterRpc)
-	tm.Register(s)
-	leaderhealth.Setup(r, s, []string{"Example"})
-	raftadmin.Register(s, r)
-	reflection.Register(s)
-	if err := s.Serve(lis); err != nil {
 		log.Fatal().Msgf("failed to serve: %v", err)
 	}
 }
