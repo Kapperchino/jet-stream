@@ -96,7 +96,6 @@ func SetupServer(raftDir string, address string, nodeName string, gossipAddress 
 	}
 
 	db, _ := bbolt.Open("./testData/bolt_"+nodeName, 0666, nil)
-	list := NewMemberList(nodeName, rootNode, gossipAddress)
 	nodeState := &fsm.NodeState{
 		Topics: db,
 	}
@@ -137,7 +136,13 @@ func SetupServer(raftDir string, address string, nodeName string, gossipAddress 
 		Raft:         r,
 		Logger:       &clusterLog,
 	}
-	clusterRpc.ClusterState = cluster.InitClusterState(list, clusterRpc, nodeName, address, shardId)
+	clusterRpc.ClusterState = cluster.InitClusterState(clusterRpc, nodeName, address, shardId)
+
+	if bootstrap {
+		memberListener := cluster.InitClusterListener(clusterRpc.ClusterState)
+		memberList := NewMemberList(MakeConfig(shardId, gossipAddress, memberListener), rootNode)
+		clusterRpc.MemberList = memberList
+	}
 	clusterPb.RegisterClusterMetaServiceServer(s, clusterRpc)
 	tm.Register(s)
 	leaderhealth.Setup(r, s, []string{"Example", "ClusterMetaService"})

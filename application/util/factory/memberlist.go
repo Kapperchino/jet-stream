@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-func NewMemberList(name string, rootNode string, gossipAddress string) *memberlist.Memberlist {
-	list, err := memberlist.Create(MakeConfig(name, gossipAddress))
+func NewMemberList(config *memberlist.Config, rootNode string) *memberlist.Memberlist {
+	list, err := memberlist.Create(config)
 	if err != nil {
 		panic("Failed to create memberlist: " + err.Error())
 	}
@@ -30,7 +30,7 @@ func NewMemberList(name string, rootNode string, gossipAddress string) *memberli
 	return list
 }
 
-func MakeConfig(name string, gossipAddress string) *memberlist.Config {
+func MakeConfig(name string, gossipAddress string, delegate memberlist.EventDelegate) *memberlist.Config {
 	host, port, _ := net.SplitHostPort(gossipAddress)
 	portInt, _ := strconv.Atoi(port)
 	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006/01/02 15:04:05"}
@@ -74,5 +74,6 @@ func MakeConfig(name string, gossipAddress string) *memberlist.Config {
 		CIDRsAllowed:      nil, // same as allow all
 
 		QueueCheckInterval: 30 * time.Second,
+		Events:             delegate,
 	}
 }

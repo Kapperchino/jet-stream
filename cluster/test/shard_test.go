@@ -66,7 +66,7 @@ func (suite *ShardsTest) TestGetShardInfoPeer() {
 	log.Info().Msgf("%+v", res)
 	assert.Nil(suite.T(), err)
 	assert.Equal(suite.T(), "nodeA", res.GetInfo().LeaderId)
-	assert.Equal(suite.T(), len(res.GetInfo().MemberAddressMap), 2)
+	assert.Equal(suite.T(), len(res.GetInfo().GetMemberAddressMap()), 2)
 }
 
 // In order for 'go test' to run this suite, we need to create

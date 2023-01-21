@@ -33,7 +33,12 @@ message ClusterInfo {
 }
 
 message ShardInfo {
-  map<string, string> memberAddressMap = 1;
+  map<string, MemberInfo> memberAddressMap = 1;
   string leaderId = 2;
   string shardId = 3;
+}
+
+message MemberInfo {
+  string nodeId = 1;
+  string address = 2;
 }
