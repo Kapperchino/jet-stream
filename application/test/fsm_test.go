@@ -3,7 +3,6 @@ package test
 import (
 	"context"
 	pb "github.com/Kapperchino/jet-application/proto"
-	"github.com/Kapperchino/jet-application/util/factory"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"

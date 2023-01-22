@@ -2,8 +2,8 @@ package fsm
 
 import (
 	pb "github.com/Kapperchino/jet-application/proto"
-	"github.com/Kapperchino/jet-application/util"
 	cluster "github.com/Kapperchino/jet-cluster"
+	"github.com/Kapperchino/jet/util"
 	"github.com/hashicorp/raft"
 	"github.com/rs/zerolog/log"
 	"go.etcd.io/bbolt"

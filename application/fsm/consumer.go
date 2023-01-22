@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"github.com/Kapperchino/jet-application/config"
 	pb "github.com/Kapperchino/jet-application/proto"
-	"github.com/Kapperchino/jet-application/util"
+	"github.com/Kapperchino/jet/config"
+	"github.com/Kapperchino/jet/util"
 	"go.etcd.io/bbolt"
 	"log"
 )

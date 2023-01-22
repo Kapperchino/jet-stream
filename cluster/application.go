@@ -3,8 +3,8 @@ package cluster
 import (
 	"context"
 	fsmPb "github.com/Kapperchino/jet-application/proto"
-	"github.com/Kapperchino/jet-application/util"
 	pb "github.com/Kapperchino/jet-cluster/proto"
+	"github.com/Kapperchino/jet/util"
 	"github.com/alphadose/haxmap"
 	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/raft"
@@ -150,7 +150,7 @@ func onPeerUpdate(i *RpcInterface, update raft.PeerObservation) {
 		log.Err(err)
 		return
 	}
-	
+
 	i.Logger.Info().Msgf("Peer %s is added", update.Peer.ID)
 }
 

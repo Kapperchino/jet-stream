@@ -1,7 +1,7 @@
 package factory
 
 import (
-	"github.com/Kapperchino/jet-application/util"
+	"github.com/Kapperchino/jet/util"
 	"github.com/hashicorp/memberlist"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"

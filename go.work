@@ -3,9 +3,12 @@ go 1.19
 use (
 	.
 	./application
+	./cluster
+	./config
+	./factory
 	./leader-rpc
 	./multi-resolver
 	./raftadmin
 	./transport
-	./cluster
+	./util
 )

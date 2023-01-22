@@ -2,7 +2,7 @@ package util
 
 import (
 	"encoding/binary"
-	"github.com/Kapperchino/jet-application/config"
+	"github.com/Kapperchino/jet/config"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )

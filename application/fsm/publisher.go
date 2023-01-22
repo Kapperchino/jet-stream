@@ -2,7 +2,7 @@ package fsm
 
 import (
 	pb "github.com/Kapperchino/jet-application/proto"
-	"github.com/Kapperchino/jet-application/util"
+	"github.com/Kapperchino/jet/util"
 	"github.com/rs/zerolog/log"
 	"go.etcd.io/bbolt"
 )

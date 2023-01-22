@@ -5,8 +5,8 @@ import (
 	"errors"
 	"github.com/Kapperchino/jet-application/fsm"
 	pb "github.com/Kapperchino/jet-application/proto"
-	"github.com/Kapperchino/jet-application/util"
 	"github.com/Kapperchino/jet-leader-rpc/rafterrors"
+	"github.com/Kapperchino/jet/util"
 	"github.com/hashicorp/raft"
 	"time"
 )
