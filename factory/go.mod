@@ -3,7 +3,6 @@ module github.com/Kapperchino/jet/factory
 go 1.19
 
 require (
-	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/hashicorp/go-hclog v0.16.2
 	github.com/hashicorp/go-uuid v1.0.0
 	github.com/hashicorp/memberlist v0.5.0

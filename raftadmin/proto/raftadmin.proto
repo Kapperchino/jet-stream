@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "github.com/Jille/raftadmin/proto";
+option go_package = "github.com/Kapperchino/jet-admin/proto";
 
 service RaftAdmin {
   rpc AddNonvoter(AddNonvoterRequest) returns (Future) {}

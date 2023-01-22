@@ -3,7 +3,6 @@ package cluster
 import (
 	"context"
 	"github.com/Kapperchino/jet-cluster/proto"
-	"github.com/Kapperchino/jet-factory/clientFactory"
 	"github.com/alphadose/haxmap"
 	"github.com/hashicorp/memberlist"
 	"github.com/rs/zerolog/log"
@@ -21,7 +20,7 @@ func (c ClusterListener) NotifyJoin(node *memberlist.Node) {
 	}
 	//Call the shard to get information then add to the state
 	address := node.Addr.String() + ":8080"
-	client, err := clientFactory.CreateClusterClient(address)
+	client, err := CreateClusterClient(address)
 	if err != nil {
 		log.Err(err).Msgf("Error creating Client for Cluster")
 		return

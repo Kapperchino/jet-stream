@@ -4,7 +4,6 @@ go 1.19
 
 require (
 	github.com/Jille/grpc-multi-resolver v1.0.0
-	github.com/golang/protobuf v1.5.2
 	github.com/hashicorp/raft v1.3.10
 	github.com/iancoleman/strcase v0.2.0
 	google.golang.org/grpc v1.51.0
@@ -14,6 +13,7 @@ require (
 require (
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/fatih/color v1.12.0 // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/hashicorp/go-hclog v0.16.2 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect

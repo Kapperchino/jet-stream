@@ -1,6 +1,8 @@
-raftadmin.pb.go: raftadmin.proto
-	protoc raftadmin.proto --go_out=plugins=grpc:. --go_opt=paths=source_relative
+rafradmin.pb.go: raftadmin.proto
+	protoc --go_out=. --go_opt=paths=source_relative \
+    --go-grpc_out=. --go-grpc_opt=paths=source_relative \
+    raftadmin.proto
 
 force:
-	rm -f raftadmin.pb.go
+	rm -f rafradmin.pb.go
 	make raftadmin.pb.go

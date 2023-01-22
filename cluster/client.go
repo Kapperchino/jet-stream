@@ -1,4 +1,4 @@
-package factory
+package cluster
 
 import (
 	clusterPb "github.com/Kapperchino/jet-cluster/proto"

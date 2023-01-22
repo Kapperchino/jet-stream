@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "github.com/Kapperchino/jet/proto";
+option go_package = "github.com/Kapperchino/jet-application/proto";
 
 service Example {
   rpc PublishMessages(PublishMessageRequest) returns (PublishMessageResponse) {}

@@ -15,10 +15,11 @@ import (
 
 type admin struct {
 	r *raft.Raft
+	pb.UnimplementedRaftAdminServer
 }
 
 func Get(r *raft.Raft) pb.RaftAdminServer {
-	return &admin{r}
+	return &admin{r: r}
 }
 
 func Register(s *grpc.Server, r *raft.Raft) {
