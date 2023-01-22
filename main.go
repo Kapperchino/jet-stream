@@ -23,5 +23,5 @@ func main() {
 	if *raftId == "" {
 		log.Fatal().Msg("Cannot have null raftid")
 	}
-	factory.SetupServer(*raftDir, *myAddr, *raftId, *gossipAddress, *rootNode, *raftBootstrap)
+	factory.SetupServer(*raftDir, *myAddr, *raftId, *gossipAddress, *rootNode, *raftBootstrap, nil)
 }

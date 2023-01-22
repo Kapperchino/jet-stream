@@ -1,12 +1,14 @@
 package clientFactory
 
 import (
+	clusterPb "github.com/Kapperchino/jet-cluster/proto"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
+	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 	"time"
 )
 
-func GetConnection(address string) (*grpc.ClientConn, error) {
+func CreateClusterClient(address string) (clusterPb.ClusterMetaServiceClient, error) {
 	serviceConfig := `{"healthCheckConfig": {"serviceName": "Example"}, "loadBalancingConfig": [ { "round_robin": {} } ]}`
 	retryOpts := []grpc_retry.CallOption{
 		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(100 * time.Millisecond)),
@@ -19,5 +21,10 @@ func GetConnection(address string) (*grpc.ClientConn, error) {
 			grpc.MaxCallRecvMsgSize(maxSize),
 			grpc.MaxCallSendMsgSize(maxSize)),
 		grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(retryOpts...)))
-	return conn, err
+	if err != nil {
+		log.Err(err).Msgf("Error creating connection for clusterService at port %s", address)
+		return nil, err
+	}
+	client := clusterPb.NewClusterMetaServiceClient(conn)
+	return client, nil
 }

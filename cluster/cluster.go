@@ -20,16 +20,15 @@ func (c ClusterListener) NotifyJoin(node *memberlist.Node) {
 		return
 	}
 	//Call the shard to get information then add to the state
-	address := node.Addr.String() + "8080"
-	con, err := clientFactory.GetConnection(address)
+	address := node.Addr.String() + ":8080"
+	client, err := clientFactory.CreateClusterClient(address)
 	if err != nil {
-		log.Err(err)
+		log.Err(err).Msgf("Error creating Client for Cluster")
 		return
 	}
-	client := proto.NewClusterMetaServiceClient(con)
 	info, err := client.GetClusterInfo(context.Background(), &proto.GetClusterInfoRequest{})
 	if err != nil {
-		log.Err(err)
+		log.Err(err).Msgf("Cannot connect to the grpc server for cluster")
 		return
 	}
 	for key, val := range info.GetInfo().GetShardMap() {
@@ -45,7 +44,7 @@ func (c ClusterListener) NotifyJoin(node *memberlist.Node) {
 			}
 			memberMap.Set(s, info)
 		}
-		c.state.ClusterInfo.Set(key, ShardInfo{
+		c.state.ClusterInfo.Set(key, &ShardInfo{
 			shardId:   val.ShardId,
 			leader:    val.LeaderId,
 			MemberMap: memberMap,

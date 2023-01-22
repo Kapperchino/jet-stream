@@ -23,6 +23,7 @@ type ClusterTest struct {
 	adminClient adminPb.RaftAdminClient
 	address     [2]string
 	nodeName    [2]string
+	servers     chan *factory.Server
 }
 
 const (
@@ -37,10 +38,11 @@ func (suite *ClusterTest) SetupSuite() {
 	suite.initFolders()
 	suite.address = [2]string{"localhost:8080", "localhost:8082"}
 	suite.nodeName = [2]string{"nodeA", "nodeB"}
+	suite.servers = make(chan *factory.Server, 5)
 	log.Print("Starting the server")
-	go factory.SetupServer(raftDir, suite.address[0], suite.nodeName[0], "localhost:8081", "", true)
+	go factory.SetupServer(raftDir, suite.address[0], suite.nodeName[0], "localhost:8081", "", true, suite.servers)
 	time.Sleep(5 * time.Second)
-	go factory.SetupServer(raftDir, suite.address[1], suite.nodeName[1], "localhost:8083", "localhost:8081", false)
+	go factory.SetupServer(raftDir, suite.address[1], suite.nodeName[1], "localhost:8083", "localhost:8081", false, suite.servers)
 	log.Print("Starting the client")
 	suite.client[0] = suite.setupClient(suite.address[0])
 	suite.client[1] = suite.setupClient(suite.address[1])

@@ -19,9 +19,9 @@ type RpcInterface struct {
 }
 
 type ClusterState struct {
-	NodeId        string
+	ShardId       string
 	CurShardState *ShardState
-	ClusterInfo   *haxmap.Map[string, ShardInfo]
+	ClusterInfo   *haxmap.Map[string, *ShardInfo]
 }
 
 type ShardState struct {
@@ -44,7 +44,7 @@ type ShardInfo struct {
 
 func InitClusterState(i *RpcInterface, nodeName string, address string, shardId string) *ClusterState {
 	clusterState := &ClusterState{
-		ClusterInfo: haxmap.New[string, ShardInfo](),
+		ClusterInfo: haxmap.New[string, *ShardInfo](),
 		CurShardState: &ShardState{
 			RaftChan: make(chan raft.Observation, 50),
 			ShardInfo: &ShardInfo{
@@ -64,6 +64,7 @@ func InitClusterState(i *RpcInterface, nodeName string, address string, shardId 
 		isLeader: false,
 		address:  address,
 	})
+	clusterState.ClusterInfo.Set(shardId, clusterState.CurShardState.ShardInfo)
 	observer := raft.NewObserver(clusterState.CurShardState.RaftChan, false, nil)
 	i.Raft.RegisterObserver(observer)
 	go onRaftUpdates(clusterState.CurShardState.RaftChan, i)
@@ -113,6 +114,7 @@ func onPeerUpdate(i *RpcInterface, update raft.PeerObservation) {
 	_, exist := i.getMemberMap().Get(string(update.Peer.ID))
 	if exist {
 		i.Logger.Debug().Msgf("Peer %s already exists, no-op", update.Peer.ID)
+		return
 	}
 	//add peer
 	i.getMemberMap().Set(string(update.Peer.ID), MemberInfo{
@@ -124,8 +126,10 @@ func onPeerUpdate(i *RpcInterface, update raft.PeerObservation) {
 }
 
 func onLeaderUpdate(i *RpcInterface, update raft.LeaderObservation) {
-	if string(update.LeaderID) == i.ClusterState.NodeId {
-		i.Logger.Debug().Msg("Node is already leader, no-op")
+	if string(update.LeaderID) == i.getMemberInfo().nodeId {
+		i.Logger.Debug().Msg("Node is already leader")
+		i.getCurShardInfo().leader = i.getMemberInfo().nodeId
+		i.getMemberInfo().isLeader = false
 		return
 	}
 	//leadership update
@@ -135,6 +139,19 @@ func onLeaderUpdate(i *RpcInterface, update raft.LeaderObservation) {
 	if exist {
 		i.Logger.Debug().Msgf("Leader %s already exists, no-op", update.LeaderAddr)
 		return
+	}
+	//leader added, we should try to see if we can get a list of servers to add to
+	servers := i.Raft.GetConfiguration().Configuration().Servers
+	for _, server := range servers {
+		_, exist := i.getMemberMap().Get(string(server.ID))
+		if !exist {
+			i.Logger.Info().Msgf("adding server %s", server)
+			i.getMemberMap().Set(string(server.ID), MemberInfo{
+				nodeId:   string(server.ID),
+				isLeader: false,
+				address:  string(server.Address),
+			})
+		}
 	}
 	i.getMemberMap().Set(string(update.LeaderID), MemberInfo{
 		nodeId:   string(update.LeaderID),

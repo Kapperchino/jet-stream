@@ -147,8 +147,9 @@ func (a *admin) LastIndex(ctx context.Context, req *pb.LastIndexRequest) (*pb.La
 }
 
 func (a *admin) Leader(ctx context.Context, req *pb.LeaderRequest) (*pb.LeaderResponse, error) {
+	leader, _ := a.r.LeaderWithID()
 	return &pb.LeaderResponse{
-		Address: string(a.r.Leader()),
+		Address: string(leader),
 	}, nil
 }
 

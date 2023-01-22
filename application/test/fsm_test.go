@@ -2,33 +2,24 @@ package test
 
 import (
 	"context"
-	raftadmin "github.com/Kapperchino/jet-admin"
-	application "github.com/Kapperchino/jet-application"
-	"github.com/Kapperchino/jet-application/fsm"
 	pb "github.com/Kapperchino/jet-application/proto"
 	"github.com/Kapperchino/jet-application/util/factory"
-	"github.com/Kapperchino/jet-leader-rpc/leaderhealth"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"go.etcd.io/bbolt"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/test/bufconn"
-	"log"
 	"math/rand"
-	"net"
 	"os"
-	"strconv"
 	"testing"
 	"time"
 )
 
 type FsmTest struct {
 	suite.Suite
-	client pb.ExampleClient
-	lis    *bufconn.Listener
-	myAddr string
+	client  pb.ExampleClient
+	myAddr  string
+	servers chan *factory.Server
 }
 
 const (
@@ -39,10 +30,10 @@ const (
 
 func (suite *FsmTest) SetupSuite() {
 	initFolders()
-	suite.lis = bufconn.Listen(bufSize)
-	suite.myAddr = "localhost:" + strconv.Itoa(rand.Int()%10000)
+	suite.servers = make(chan *factory.Server, 5)
+	suite.myAddr = "localhost:8080"
 	log.Printf("Starting the server")
-	go setupServer(suite.myAddr, suite.lis)
+	go factory.SetupServer(raftDir, suite.myAddr, "nodeA", "localhost:8081", "", true, suite.servers)
 	time.Sleep(3 * time.Second)
 	log.Printf("Starting the client")
 	suite.client = suite.setupClient()
@@ -147,48 +138,14 @@ func publishMessages(client pb.ExampleClient, topic string, messages []*pb.KeyVa
 	return res, err
 }
 
-func setupServer(myAddr string, lis *bufconn.Listener) {
-	_, _, err := net.SplitHostPort(myAddr)
-	if err != nil {
-		log.Fatalf("failed to parse local address (%q): %v", myAddr, err)
-	}
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-
-	db, _ := bbolt.Open("./testData/bolt", 0666, nil)
-	nodeState := &fsm.NodeState{
-		Topics: db,
-	}
-
-	r, tm, err := factory.NewRaft("test", myAddr, nodeState, true, raftDir)
-	if err != nil {
-		log.Fatalf("failed to start raft: %v", err)
-	}
-	s := grpc.NewServer()
-	pb.RegisterExampleServer(s, &application.RpcInterface{
-		NodeState: nodeState,
-		Raft:      r,
-	})
-	tm.Register(s)
-	leaderhealth.Setup(r, s, []string{"Example"})
-	raftadmin.Register(s, r)
-	reflection.Register(s)
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-	}
-}
-
 func (suite *FsmTest) setupClient() pb.ExampleClient {
 	serviceConfig := `{"healthCheckConfig": {"serviceName": "Example"}, "loadBalancingConfig": [ { "round_robin": {} } ]}`
 	retryOpts := []grpc_retry.CallOption{
 		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(100 * time.Millisecond)),
 		grpc_retry.WithMax(5),
 	}
-	ctx := context.Background()
 	maxSize := 1 * 1024 * 1024 * 1024
-	conn, _ := grpc.DialContext(ctx, "bufnet",
-		grpc.WithContextDialer(suite.bufDialer),
+	conn, _ := grpc.Dial(suite.myAddr,
 		grpc.WithDefaultServiceConfig(serviceConfig), grpc.WithInsecure(),
 		grpc.WithDefaultCallOptions(grpc.WaitForReady(false),
 			grpc.MaxCallRecvMsgSize(maxSize),
@@ -198,8 +155,8 @@ func (suite *FsmTest) setupClient() pb.ExampleClient {
 }
 
 func initFolders() {
-	if err := os.MkdirAll(raftDir+"/test/", os.ModePerm); err != nil {
-		log.Fatal(err)
+	if err := os.MkdirAll(raftDir+"/nodeA/", os.ModePerm); err != nil {
+		log.Err(err)
 	}
 }
 
@@ -208,8 +165,4 @@ func cleanup() {
 	if err != nil {
 		return
 	}
-}
-
-func (suite *FsmTest) bufDialer(context.Context, string) (net.Conn, error) {
-	return suite.lis.Dial()
 }

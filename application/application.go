@@ -18,14 +18,15 @@ type RpcInterface struct {
 }
 
 func PublishMessagesInternal(r RpcInterface, req *pb.PublishMessageRequest) ([]*pb.Message, error) {
-	input := &pb.Write{
-		Operation: &pb.Write_Publish{
+	input := &pb.WriteOperation{
+		Operation: &pb.WriteOperation_Publish{
 			Publish: &pb.Publish{
 				Topic:     req.GetTopic(),
 				Partition: req.GetPartition(),
 				Messages:  req.GetMessages(),
 			},
 		},
+		Code: pb.Operation_PUBLISH,
 	}
 	val, _ := util.SerializeMessage(input)
 	res := r.Raft.Apply(val, time.Second)
@@ -54,12 +55,13 @@ func (r RpcInterface) PublishMessages(ctx context.Context, req *pb.PublishMessag
 }
 
 func CreateConsumerInternal(r RpcInterface, req *pb.CreateConsumerRequest) (*pb.CreateConsumerResponse, error) {
-	input := &pb.Write{
-		Operation: &pb.Write_CreateConsumer{
+	input := &pb.WriteOperation{
+		Operation: &pb.WriteOperation_CreateConsumer{
 			CreateConsumer: &pb.CreateConsumer{
 				Topic: req.GetTopic(),
 			},
 		},
+		Code: pb.Operation_CREATE_CONSUMER,
 	}
 	val, _ := util.SerializeMessage(input)
 	res := r.Raft.Apply(val, time.Second)
@@ -86,13 +88,14 @@ func (r RpcInterface) CreateConsumer(ctx context.Context, req *pb.CreateConsumer
 }
 
 func ConsumeInternal(r RpcInterface, req *pb.ConsumeRequest) (*pb.ConsumeResponse, error) {
-	input := &pb.Write{
-		Operation: &pb.Write_Consume{
+	input := &pb.WriteOperation{
+		Operation: &pb.WriteOperation_Consume{
 			Consume: &pb.Consume{
 				Topic: req.GetTopic(),
 				Id:    req.GetConsumerId(),
 			},
 		},
+		Code: pb.Operation_CONSUME,
 	}
 	val, _ := util.SerializeMessage(input)
 	res := r.Raft.Apply(val, time.Second)
@@ -119,13 +122,14 @@ func (r RpcInterface) Consume(_ context.Context, req *pb.ConsumeRequest) (*pb.Co
 }
 
 func CreateTopicInternal(r RpcInterface, req *pb.CreateTopicRequest) (*pb.CreateTopicResponse, error) {
-	input := &pb.Write{
-		Operation: &pb.Write_CreateTopic{
+	input := &pb.WriteOperation{
+		Operation: &pb.WriteOperation_CreateTopic{
 			CreateTopic: &pb.CreateTopic{
 				Topic:      req.GetTopic(),
 				Partitions: req.GetNumPartitions(),
 			},
 		},
+		Code: pb.Operation_CREATE_TOPIC,
 	}
 	val, _ := util.SerializeMessage(input)
 	res := r.Raft.Apply(val, time.Second)

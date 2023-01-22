@@ -23,6 +23,7 @@ type ShardsTest struct {
 	adminClient adminPb.RaftAdminClient
 	address     [2]string
 	nodeName    [2]string
+	servers     chan *factory.Server
 }
 
 // Make sure that VariableThatShouldStartAtFive is set to five
@@ -31,10 +32,11 @@ func (suite *ShardsTest) SetupSuite() {
 	suite.initFolders()
 	suite.address = [2]string{"localhost:8080", "localhost:8082"}
 	suite.nodeName = [2]string{"nodeA", "nodeB"}
+	suite.servers = make(chan *factory.Server, 5)
 	log.Print("Starting the server")
-	go factory.SetupServer(raftDir, suite.address[0], suite.nodeName[0], "localhost:8081", "", true)
+	go factory.SetupServer(raftDir, suite.address[0], suite.nodeName[0], "localhost:8081", "", true, suite.servers)
 	time.Sleep(5 * time.Second)
-	go factory.SetupServer(raftDir, suite.address[1], suite.nodeName[1], "localhost:8083", "localhost:8081", false)
+	go factory.SetupServer(raftDir, suite.address[1], suite.nodeName[1], "localhost:8083", "localhost:8081", false, suite.servers)
 	log.Print("Starting the client")
 	suite.client[0] = suite.setupClient(suite.address[0])
 	suite.adminClient = suite.setupAdminClient(suite.address[0])
@@ -69,6 +71,50 @@ func (suite *ShardsTest) TestGetShardInfoPeer() {
 	assert.Equal(suite.T(), len(res.GetInfo().GetMemberAddressMap()), 2)
 }
 
+func (suite *ShardsTest) TestGetShardInfoPeerAddingNode() {
+	res, err := suite.client[1].GetShardInfo(context.Background(), &clusterPb.GetShardInfoRequest{})
+	log.Info().Msgf("%+v", res)
+	assert.Nil(suite.T(), err)
+	assert.Equal(suite.T(), "nodeA", res.GetInfo().LeaderId)
+	assert.Equal(suite.T(), len(res.GetInfo().GetMemberAddressMap()), 2)
+	//Currently we have 2 nodes in a shard
+	suite.addNodeC()
+	time.Sleep(3 * time.Second)
+	client := suite.setupClient("localhost:8084")
+	res, err = client.GetShardInfo(context.Background(), &clusterPb.GetShardInfoRequest{})
+	log.Info().Msgf("%+v", res)
+	assert.Nil(suite.T(), err)
+	assert.Equal(suite.T(), "nodeA", res.GetInfo().LeaderId)
+	assert.Equal(suite.T(), len(res.GetInfo().GetMemberAddressMap()), 3)
+	time.Sleep(3 * time.Second)
+	res, err = suite.client[1].GetShardInfo(context.Background(), &clusterPb.GetShardInfoRequest{})
+	log.Info().Msgf("%+v", res)
+	assert.Nil(suite.T(), err)
+	assert.Equal(suite.T(), "nodeA", res.GetInfo().LeaderId)
+	assert.Equal(suite.T(), len(res.GetInfo().GetMemberAddressMap()), 3)
+	server := <-suite.servers
+	server.Kill()
+}
+
+func (suite *ShardsTest) TestGetShardInfoPeerDeletingNode() {
+	suite.addNodeC()
+	time.Sleep(3 * time.Second)
+	res, err := suite.client[1].GetShardInfo(context.Background(), &clusterPb.GetShardInfoRequest{})
+	log.Info().Msgf("%+v", res)
+	assert.Nil(suite.T(), err)
+	assert.Equal(suite.T(), "nodeA", res.GetInfo().LeaderId)
+	assert.Equal(suite.T(), len(res.GetInfo().GetMemberAddressMap()), 3)
+	server := <-suite.servers
+	server.Kill()
+	//Currently we have 2 nodes in a shard
+	time.Sleep(3 * time.Second)
+	res, err = suite.client[1].GetShardInfo(context.Background(), &clusterPb.GetShardInfoRequest{})
+	log.Info().Msgf("%+v", res)
+	assert.Nil(suite.T(), err)
+	assert.Equal(suite.T(), "nodeA", res.GetInfo().LeaderId)
+	assert.Equal(suite.T(), len(res.GetInfo().GetMemberAddressMap()), 2)
+}
+
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestShards(t *testing.T) {
@@ -80,6 +126,9 @@ func (suite *ShardsTest) initFolders() {
 		log.Fatal().Err(err)
 	}
 	if err := os.Mkdir(raftDir+"/nodeB/", os.ModePerm); err != nil {
+		log.Fatal().Err(err)
+	}
+	if err := os.Mkdir(raftDir+"/nodeC/", os.ModePerm); err != nil {
 		log.Fatal().Err(err)
 	}
 }
@@ -114,4 +163,14 @@ func (suite *ShardsTest) setupAdminClient(address string) adminPb.RaftAdminClien
 			grpc.MaxCallSendMsgSize(maxSize)),
 		grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(retryOpts...)))
 	return adminPb.NewRaftAdminClient(conn)
+}
+
+func (suite *ShardsTest) addNodeC() {
+	go factory.SetupServer(raftDir, "localhost:8084", "nodeC", "localhost:8085", "localhost:8081", false, suite.servers)
+	_, err := suite.adminClient.AddVoter(context.Background(), &adminPb.AddVoterRequest{
+		Id:            "nodeC",
+		Address:       "localhost:8084",
+		PreviousIndex: 0,
+	})
+	assert.Nil(suite.T(), err)
 }

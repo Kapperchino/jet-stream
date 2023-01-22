@@ -5,6 +5,7 @@ import (
 	raftadmin "github.com/Kapperchino/jet-admin"
 	application "github.com/Kapperchino/jet-application"
 	"github.com/Kapperchino/jet-application/fsm"
+	"github.com/Kapperchino/jet-application/fsm/handlers"
 	pb "github.com/Kapperchino/jet-application/proto"
 	"github.com/Kapperchino/jet-application/util"
 	cluster "github.com/Kapperchino/jet-cluster"
@@ -13,6 +14,7 @@ import (
 	transport "github.com/Kapperchino/jet-transport"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-uuid"
+	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/raft"
 	boltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/rs/zerolog"
@@ -25,6 +27,18 @@ import (
 	"path/filepath"
 	"strings"
 )
+
+type Server struct {
+	Raft       *raft.Raft
+	Grpc       *grpc.Server
+	MemberList *memberlist.Memberlist
+}
+
+func (s *Server) Kill() {
+	s.Grpc.Stop()
+	s.MemberList.Shutdown()
+	s.Raft.Shutdown()
+}
 
 func NewRaft(myID, myAddress string, fsm raft.FSM, bootStrap bool, raftDir string) (*raft.Raft, *transport.Manager, error) {
 	c := raft.DefaultConfig()
@@ -82,7 +96,7 @@ func NewRaft(myID, myAddress string, fsm raft.FSM, bootStrap bool, raftDir strin
 	return r, tm, nil
 }
 
-func SetupServer(raftDir string, address string, nodeName string, gossipAddress string, rootNode string, bootstrap bool) {
+func SetupServer(raftDir string, address string, nodeName string, gossipAddress string, rootNode string, bootstrap bool, server chan *Server) {
 	_, port, err := net.SplitHostPort(address)
 	if err != nil {
 		log.Fatal().Msgf("failed to parse local address (%q): %v", address, err)
@@ -97,9 +111,9 @@ func SetupServer(raftDir string, address string, nodeName string, gossipAddress 
 
 	db, _ := bbolt.Open("./testData/bolt_"+nodeName, 0666, nil)
 	nodeState := &fsm.NodeState{
-		Topics: db,
+		Topics:     db,
+		HandlerMap: handlers.InitHandlers(),
 	}
-
 	r, tm, err := NewRaft(nodeName, address, nodeState, bootstrap, raftDir)
 	if err != nil {
 		log.Fatal().Msgf("failed to start raft: %v", err)
@@ -137,10 +151,10 @@ func SetupServer(raftDir string, address string, nodeName string, gossipAddress 
 		Logger:       &clusterLog,
 	}
 	clusterRpc.ClusterState = cluster.InitClusterState(clusterRpc, nodeName, address, shardId)
-
+	var memberList *memberlist.Memberlist
 	if bootstrap {
 		memberListener := cluster.InitClusterListener(clusterRpc.ClusterState)
-		memberList := NewMemberList(MakeConfig(shardId, gossipAddress, memberListener), rootNode)
+		memberList = NewMemberList(MakeConfig(shardId, gossipAddress, memberListener), rootNode)
 		clusterRpc.MemberList = memberList
 	}
 	clusterPb.RegisterClusterMetaServiceServer(s, clusterRpc)
@@ -148,6 +162,11 @@ func SetupServer(raftDir string, address string, nodeName string, gossipAddress 
 	leaderhealth.Setup(r, s, []string{"Example", "ClusterMetaService"})
 	raftadmin.Register(s, r)
 	reflection.Register(s)
+	server <- &Server{
+		Raft:       r,
+		Grpc:       s,
+		MemberList: memberList,
+	}
 	if err := s.Serve(sock); err != nil {
 		log.Fatal().Msgf("failed to serve: %v", err)
 	}
