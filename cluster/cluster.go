@@ -35,12 +35,12 @@ func (c ClusterListener) NotifyJoin(node *memberlist.Node) {
 		memberMap := haxmap.New[string, MemberInfo]()
 		for s, s2 := range val.MemberAddressMap {
 			info := MemberInfo{
-				nodeId:   s2.NodeId,
-				isLeader: false,
-				address:  s2.Address,
+				NodeId:   s2.NodeId,
+				IsLeader: false,
+				Address:  s2.Address,
 			}
-			if info.nodeId == val.LeaderId {
-				info.isLeader = true
+			if info.NodeId == val.LeaderId {
+				info.IsLeader = true
 			}
 			memberMap.Set(s, info)
 		}

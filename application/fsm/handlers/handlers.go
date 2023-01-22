@@ -13,7 +13,17 @@ func InitHandlers() map[pb.Operation]func(f *fsm.NodeState, op *pb.WriteOperatio
 	handlerMap[pb.Operation_CONSUME] = HandleConsume
 	handlerMap[pb.Operation_CREATE_CONSUMER] = HandleCreateConsume
 	handlerMap[pb.Operation_CREATE_TOPIC] = HandleCreateTopic
+	handlerMap[pb.Operation_ADD_MEMBER] = HandleAddMember
 	return handlerMap
+}
+
+func HandleAddMember(f *fsm.NodeState, op *pb.WriteOperation, l *raft.Log) interface{} {
+	res, err := f.AddMember(op.GetAddMember())
+	if err != nil {
+		log.Error().Err(err)
+		return err
+	}
+	return res
 }
 
 func HandlePublish(f *fsm.NodeState, op *pb.WriteOperation, l *raft.Log) interface{} {

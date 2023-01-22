@@ -70,6 +70,7 @@ enum Operation {
   CONSUME = 1;
   CREATE_CONSUMER = 2;
   CREATE_TOPIC = 3;
+  ADD_MEMBER = 4;
 }
 
 message KeyVal {
@@ -111,14 +112,23 @@ message CreateTopic{
 message CreateTopicResult{
 }
 
+message AddMember{
+  string nodeId = 1;
+  string address = 2;
+}
+
+message AddMemberResult{
+}
+
 message WriteOperation {
   oneof operation {
     Publish publish = 1;
     Consume consume = 2;
     CreateConsumer createConsumer = 3;
     CreateTopic createTopic = 4;
+    AddMember addMember = 5;
   }
-  Operation code = 5;
+  Operation code = 6;
 }
 
 message WriteResult {
@@ -127,6 +137,7 @@ message WriteResult {
     ConsumeResult consumeResult = 2;
     CreateConsumerResult createConsumerResult = 3;
     CreateTopicResult createTopicResult = 4;
+    AddMemberResult addMemberResult = 5;
   }
 }
 

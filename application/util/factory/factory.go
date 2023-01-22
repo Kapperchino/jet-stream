@@ -114,6 +114,7 @@ func SetupServer(raftDir string, address string, nodeName string, gossipAddress 
 		Topics:     db,
 		HandlerMap: handlers.InitHandlers(),
 	}
+
 	r, tm, err := NewRaft(nodeName, address, nodeState, bootstrap, raftDir)
 	if err != nil {
 		log.Fatal().Msgf("failed to start raft: %v", err)
@@ -157,6 +158,7 @@ func SetupServer(raftDir string, address string, nodeName string, gossipAddress 
 		memberList = NewMemberList(MakeConfig(shardId, gossipAddress, memberListener), rootNode)
 		clusterRpc.MemberList = memberList
 	}
+	nodeState.ShardState = clusterRpc.ClusterState.CurShardState
 	clusterPb.RegisterClusterMetaServiceServer(s, clusterRpc)
 	tm.Register(s)
 	leaderhealth.Setup(r, s, []string{"Example", "ClusterMetaService"})

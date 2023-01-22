@@ -3,6 +3,7 @@ package fsm
 import (
 	pb "github.com/Kapperchino/jet-application/proto"
 	"github.com/Kapperchino/jet-application/util"
+	cluster "github.com/Kapperchino/jet-cluster"
 	"github.com/hashicorp/raft"
 	"github.com/rs/zerolog/log"
 	"go.etcd.io/bbolt"
@@ -12,6 +13,7 @@ import (
 type NodeState struct {
 	Topics     *bbolt.DB
 	HandlerMap map[pb.Operation]func(f *NodeState, op *pb.WriteOperation, l *raft.Log) interface{}
+	ShardState *cluster.ShardState
 }
 
 var _ raft.FSM = &NodeState{}

@@ -2,11 +2,14 @@ package cluster
 
 import (
 	"context"
+	fsmPb "github.com/Kapperchino/jet-application/proto"
+	"github.com/Kapperchino/jet-application/util"
 	pb "github.com/Kapperchino/jet-cluster/proto"
 	"github.com/alphadose/haxmap"
 	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/raft"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"time"
 )
 
@@ -31,9 +34,9 @@ type ShardState struct {
 }
 
 type MemberInfo struct {
-	nodeId   string
-	isLeader bool
-	address  string
+	NodeId   string
+	IsLeader bool
+	Address  string
 }
 
 type ShardInfo struct {
@@ -53,16 +56,16 @@ func InitClusterState(i *RpcInterface, nodeName string, address string, shardId 
 				MemberMap: haxmap.New[string, MemberInfo](),
 			},
 			MemberInfo: &MemberInfo{
-				nodeId:   nodeName,
-				isLeader: false,
-				address:  address,
+				NodeId:   nodeName,
+				IsLeader: false,
+				Address:  address,
 			},
 		},
 	}
 	clusterState.CurShardState.ShardInfo.MemberMap.Set(nodeName, MemberInfo{
-		nodeId:   nodeName,
-		isLeader: false,
-		address:  address,
+		NodeId:   nodeName,
+		IsLeader: false,
+		Address:  address,
 	})
 	clusterState.ClusterInfo.Set(shardId, clusterState.CurShardState.ShardInfo)
 	observer := raft.NewObserver(clusterState.CurShardState.RaftChan, false, nil)
@@ -118,22 +121,48 @@ func onPeerUpdate(i *RpcInterface, update raft.PeerObservation) {
 	}
 	//add peer
 	i.getMemberMap().Set(string(update.Peer.ID), MemberInfo{
-		nodeId:   string(update.Peer.ID),
-		isLeader: false,
-		address:  string(update.Peer.Address),
+		NodeId:   string(update.Peer.ID),
+		IsLeader: false,
+		Address:  string(update.Peer.Address),
 	})
+
+	i.Logger.Info().Msgf("Replicating peer %s", update.Peer.ID)
+	input := &fsmPb.WriteOperation{
+		Operation: &fsmPb.WriteOperation_AddMember{AddMember: &fsmPb.AddMember{
+			NodeId:  string(update.Peer.ID),
+			Address: string(update.Peer.Address),
+		}},
+		Code: fsmPb.Operation_ADD_MEMBER,
+	}
+	val, _ := util.SerializeMessage(input)
+	res := i.Raft.Apply(val, time.Second)
+	if err := res.Error(); err != nil {
+		log.Err(err)
+		return
+	}
+	err, isErr := res.Response().(error)
+	if isErr {
+		log.Err(err)
+		return
+	}
+	_, isValid := res.Response().(*fsmPb.AddMemberResult)
+	if !isValid {
+		log.Err(err)
+		return
+	}
+	
 	i.Logger.Info().Msgf("Peer %s is added", update.Peer.ID)
 }
 
 func onLeaderUpdate(i *RpcInterface, update raft.LeaderObservation) {
-	if string(update.LeaderID) == i.getMemberInfo().nodeId {
+	if string(update.LeaderID) == i.getMemberInfo().NodeId {
 		i.Logger.Debug().Msg("Node is already leader")
-		i.getCurShardInfo().leader = i.getMemberInfo().nodeId
-		i.getMemberInfo().isLeader = false
+		i.getCurShardInfo().leader = i.getMemberInfo().NodeId
+		i.getMemberInfo().IsLeader = false
 		return
 	}
 	//leadership update
-	i.getMemberInfo().isLeader = false
+	i.getMemberInfo().IsLeader = false
 	i.getCurShardInfo().leader = string(update.LeaderID)
 	_, exist := i.getMemberMap().Get(string(update.LeaderID))
 	if exist {
@@ -147,16 +176,16 @@ func onLeaderUpdate(i *RpcInterface, update raft.LeaderObservation) {
 		if !exist {
 			i.Logger.Info().Msgf("adding server %s", server)
 			i.getMemberMap().Set(string(server.ID), MemberInfo{
-				nodeId:   string(server.ID),
-				isLeader: false,
-				address:  string(server.Address),
+				NodeId:   string(server.ID),
+				IsLeader: false,
+				Address:  string(server.Address),
 			})
 		}
 	}
 	i.getMemberMap().Set(string(update.LeaderID), MemberInfo{
-		nodeId:   string(update.LeaderID),
-		isLeader: true,
-		address:  string(update.LeaderAddr),
+		NodeId:   string(update.LeaderID),
+		IsLeader: true,
+		Address:  string(update.LeaderAddr),
 	})
 }
 
@@ -210,8 +239,8 @@ func (r RpcInterface) GetShardInfo(_ context.Context, req *pb.GetShardInfoReques
 	}
 	shardMap.ForEach(func(s string, info MemberInfo) bool {
 		res.GetInfo().MemberAddressMap[s] = &pb.MemberInfo{
-			NodeId:  info.nodeId,
-			Address: info.address,
+			NodeId:  info.NodeId,
+			Address: info.Address,
 		}
 		return true
 	})
