@@ -42,7 +42,7 @@ func (suite *ClusterTest) SetupSuite() {
 	log.Print("Starting the server")
 	go factory.SetupServer(raftDir, suite.address[0], suite.nodeName[0], "localhost:8081", "", true, suite.servers)
 	time.Sleep(5 * time.Second)
-	go factory.SetupServer(raftDir, suite.address[1], suite.nodeName[1], "localhost:8083", "localhost:8081", false, suite.servers)
+	go factory.SetupServer(raftDir, suite.address[1], suite.nodeName[1], "localhost:8083", "localhost:8081", true, suite.servers)
 	log.Print("Starting the client")
 	suite.client[0] = suite.setupClient(suite.address[0])
 	suite.client[1] = suite.setupClient(suite.address[1])
@@ -56,10 +56,11 @@ func (suite *ClusterTest) TearDownSuite() {
 
 // All methods that begin with "Test" are run as tests within a
 // suite.
-func (suite *ClusterTest) TestMemberList() {
-	res, err := suite.client[0].GetPeers(context.Background(), &clusterPb.GetPeersRequest{})
+func (suite *ClusterTest) TestGetClusterInfo() {
+	time.Sleep(10 * time.Second)
+	res, err := suite.client[1].GetClusterInfo(context.Background(), &clusterPb.GetClusterInfoRequest{})
 	assert.Nil(suite.T(), err)
-	assert.Equal(suite.T(), len(res.Peers), 2)
+	log.Info().Msgf("%s", res)
 }
 
 // In order for 'go test' to run this suite, we need to create

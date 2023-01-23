@@ -309,6 +309,30 @@ func (r RpcInterface) GetShardInfo(_ context.Context, req *pb.GetShardInfoReques
 	return &res, nil
 }
 
-func (r RpcInterface) GetPeers(_ context.Context, req *pb.GetPeersRequest) (*pb.GetPeersResponse, error) {
-	return &pb.GetPeersResponse{Peers: nil}, nil
+func (r RpcInterface) GetClusterInfo(context.Context, *pb.GetClusterInfoRequest) (*pb.GetClusterInfoResponse, error) {
+	clusterMap := r.ClusterState.ClusterInfo
+	res := &pb.GetClusterInfoResponse{Info: &pb.ClusterInfo{}}
+	resMap := make(map[string]*pb.ShardInfo)
+	clusterMap.ForEach(func(s string, info *ShardInfo) bool {
+		resMap[s] = &pb.ShardInfo{
+			MemberAddressMap: toProtoMemberMap(info.MemberMap),
+			LeaderId:         info.leader,
+			ShardId:          info.shardId,
+		}
+		return true
+	})
+	res.Info.ShardMap = resMap
+	return res, nil
+}
+
+func toProtoMemberMap(memberMap *haxmap.Map[string, MemberInfo]) map[string]*pb.MemberInfo {
+	res := make(map[string]*pb.MemberInfo)
+	memberMap.ForEach(func(s string, info MemberInfo) bool {
+		res[s] = &pb.MemberInfo{
+			NodeId:  info.NodeId,
+			Address: info.Address,
+		}
+		return true
+	})
+	return res
 }

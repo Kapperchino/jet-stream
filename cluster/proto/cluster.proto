@@ -3,16 +3,8 @@ syntax = "proto3";
 option go_package = "github.com/Kapperchino/jet/cluster/proto";
 
 service ClusterMetaService {
-  rpc GetPeers(GetPeersRequest) returns (GetPeersResponse) {}
   rpc GetClusterInfo(GetClusterInfoRequest) returns (GetClusterInfoResponse) {}
   rpc GetShardInfo(GetShardInfoRequest) returns (GetShardInfoResponse) {}
-}
-
-message GetPeersRequest {
-}
-
-message GetPeersResponse {
-  repeated string peers = 1;
 }
 
 message GetShardInfoRequest{

@@ -22,7 +22,6 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ClusterMetaServiceClient interface {
-	GetPeers(ctx context.Context, in *GetPeersRequest, opts ...grpc.CallOption) (*GetPeersResponse, error)
 	GetClusterInfo(ctx context.Context, in *GetClusterInfoRequest, opts ...grpc.CallOption) (*GetClusterInfoResponse, error)
 	GetShardInfo(ctx context.Context, in *GetShardInfoRequest, opts ...grpc.CallOption) (*GetShardInfoResponse, error)
 }
@@ -33,15 +32,6 @@ type clusterMetaServiceClient struct {
 
 func NewClusterMetaServiceClient(cc grpc.ClientConnInterface) ClusterMetaServiceClient {
 	return &clusterMetaServiceClient{cc}
-}
-
-func (c *clusterMetaServiceClient) GetPeers(ctx context.Context, in *GetPeersRequest, opts ...grpc.CallOption) (*GetPeersResponse, error) {
-	out := new(GetPeersResponse)
-	err := c.cc.Invoke(ctx, "/ClusterMetaService/GetPeers", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *clusterMetaServiceClient) GetClusterInfo(ctx context.Context, in *GetClusterInfoRequest, opts ...grpc.CallOption) (*GetClusterInfoResponse, error) {
@@ -66,7 +56,6 @@ func (c *clusterMetaServiceClient) GetShardInfo(ctx context.Context, in *GetShar
 // All implementations must embed UnimplementedClusterMetaServiceServer
 // for forward compatibility
 type ClusterMetaServiceServer interface {
-	GetPeers(context.Context, *GetPeersRequest) (*GetPeersResponse, error)
 	GetClusterInfo(context.Context, *GetClusterInfoRequest) (*GetClusterInfoResponse, error)
 	GetShardInfo(context.Context, *GetShardInfoRequest) (*GetShardInfoResponse, error)
 	mustEmbedUnimplementedClusterMetaServiceServer()
@@ -76,9 +65,6 @@ type ClusterMetaServiceServer interface {
 type UnimplementedClusterMetaServiceServer struct {
 }
 
-func (UnimplementedClusterMetaServiceServer) GetPeers(context.Context, *GetPeersRequest) (*GetPeersResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetPeers not implemented")
-}
 func (UnimplementedClusterMetaServiceServer) GetClusterInfo(context.Context, *GetClusterInfoRequest) (*GetClusterInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetClusterInfo not implemented")
 }
@@ -96,24 +82,6 @@ type UnsafeClusterMetaServiceServer interface {
 
 func RegisterClusterMetaServiceServer(s grpc.ServiceRegistrar, srv ClusterMetaServiceServer) {
 	s.RegisterService(&ClusterMetaService_ServiceDesc, srv)
-}
-
-func _ClusterMetaService_GetPeers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetPeersRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ClusterMetaServiceServer).GetPeers(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/ClusterMetaService/GetPeers",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClusterMetaServiceServer).GetPeers(ctx, req.(*GetPeersRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _ClusterMetaService_GetClusterInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -159,10 +127,6 @@ var ClusterMetaService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "ClusterMetaService",
 	HandlerType: (*ClusterMetaServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "GetPeers",
-			Handler:    _ClusterMetaService_GetPeers_Handler,
-		},
 		{
 			MethodName: "GetClusterInfo",
 			Handler:    _ClusterMetaService_GetClusterInfo_Handler,
