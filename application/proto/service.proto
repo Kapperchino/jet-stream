@@ -65,14 +65,6 @@ message Message {
   uint64 raftIndex = 6;
 }
 
-enum Operation {
-  PUBLISH = 0;
-  CONSUME = 1;
-  CREATE_CONSUMER = 2;
-  CREATE_TOPIC = 3;
-  ADD_MEMBER = 4;
-}
-
 message KeyVal {
   bytes key = 1;
   bytes val = 2;
@@ -120,6 +112,23 @@ message AddMember{
 message AddMemberResult{
 }
 
+message RemoveMember{
+  string nodeId = 1;
+}
+
+message RemoveMemberResult{
+}
+
+
+enum Operation {
+  PUBLISH = 0;
+  CONSUME = 1;
+  CREATE_CONSUMER = 2;
+  CREATE_TOPIC = 3;
+  ADD_MEMBER = 4;
+  REMOVE_MEMBER = 5;
+}
+
 message WriteOperation {
   oneof operation {
     Publish publish = 1;
@@ -127,8 +136,9 @@ message WriteOperation {
     CreateConsumer createConsumer = 3;
     CreateTopic createTopic = 4;
     AddMember addMember = 5;
+    RemoveMember removeMember = 6;
   }
-  Operation code = 6;
+  Operation code = 7;
 }
 
 message WriteResult {
@@ -138,6 +148,7 @@ message WriteResult {
     CreateConsumerResult createConsumerResult = 3;
     CreateTopicResult createTopicResult = 4;
     AddMemberResult addMemberResult = 5;
+    RemoveMemberResult removeMemberResult = 6;
   }
 }
 

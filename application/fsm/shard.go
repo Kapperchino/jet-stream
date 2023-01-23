@@ -13,3 +13,8 @@ func (f *NodeState) AddMember(req *pb.AddMember) (interface{}, error) {
 	})
 	return nil, nil
 }
+
+func (f *NodeState) RemoveMember(req *pb.RemoveMember) (interface{}, error) {
+	f.ShardState.ShardInfo.MemberMap.Del(req.NodeId)
+	return nil, nil
+}

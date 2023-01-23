@@ -36,8 +36,10 @@ type Server struct {
 
 func (s *Server) Kill() {
 	s.Grpc.Stop()
-	s.MemberList.Shutdown()
-	s.Raft.Shutdown()
+	if s.MemberList != nil {
+		s.MemberList.Shutdown()
+	}
+	s.Raft.Shutdown().Error()
 }
 
 func NewRaft(myID, myAddress string, fsm raft.FSM, bootStrap bool, raftDir string) (*raft.Raft, *transport.Manager, error) {

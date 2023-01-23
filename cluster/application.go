@@ -99,6 +99,9 @@ func onRaftUpdates(raftChan chan raft.Observation, i *RpcInterface) {
 			case raft.LeaderObservation:
 				onLeaderUpdate(i, val)
 				break
+			case raft.FailedHeartbeatObservation:
+				onFailedHeartbeat(i, val)
+				break
 			}
 		default:
 			i.Logger.Trace().Msgf("No updates for shard %s", i.getShardId())
@@ -106,11 +109,35 @@ func onRaftUpdates(raftChan chan raft.Observation, i *RpcInterface) {
 	}
 
 }
+func onFailedHeartbeat(i *RpcInterface, update raft.FailedHeartbeatObservation) {
+	i.Logger.Warn().Msgf("Peer %s cannot be connected to, last contact: %s, nodes: %s", update.PeerID, update.LastContact.String(), i.Raft.GetConfiguration().Configuration().Servers)
+	if time.Now().Sub(update.LastContact).Seconds() > 10 {
+		err := i.Raft.RemoveServer(update.PeerID, i.Raft.LastIndex()-1, 0).Error()
+		if err != nil {
+			return
+		}
+		i.Logger.Info().Msgf("Peer %s is removed", update.PeerID)
+		i.getMemberMap().Del(string(update.PeerID))
+		err = RemovePeer(i, string(update.PeerID))
+		if err != nil {
+			log.Err(err).Msgf("Error removing peer %s", update.PeerID)
+			return
+		}
+	}
+}
 
 func onPeerUpdate(i *RpcInterface, update raft.PeerObservation) {
 	if update.Removed {
 		i.Logger.Info().Msgf("Peer %s is removed", update.Peer.ID)
 		i.getMemberMap().Del(string(update.Peer.ID))
+		err := RemovePeer(i, string(update.Peer.ID))
+		if err != nil {
+			log.Err(err).Msgf("Error removing peer %s", update.Peer.ID)
+			return
+		}
+		return
+	}
+	if len(update.Peer.ID) == 0 {
 		return
 	}
 	//peer is updated
@@ -127,38 +154,19 @@ func onPeerUpdate(i *RpcInterface, update raft.PeerObservation) {
 	})
 
 	i.Logger.Info().Msgf("Replicating peer %s", update.Peer.ID)
-	input := &fsmPb.WriteOperation{
-		Operation: &fsmPb.WriteOperation_AddMember{AddMember: &fsmPb.AddMember{
-			NodeId:  string(update.Peer.ID),
-			Address: string(update.Peer.Address),
-		}},
-		Code: fsmPb.Operation_ADD_MEMBER,
-	}
-	val, _ := util.SerializeMessage(input)
-	res := i.Raft.Apply(val, time.Second)
-	if err := res.Error(); err != nil {
-		log.Err(err)
+	err := ReplicatePeer(i, update)
+	if err != nil {
+		log.Err(err).Msgf("Error replicating peer %s", update.Peer.ID)
 		return
 	}
-	err, isErr := res.Response().(error)
-	if isErr {
-		log.Err(err)
-		return
-	}
-	_, isValid := res.Response().(*fsmPb.AddMemberResult)
-	if !isValid {
-		log.Err(err)
-		return
-	}
-
 	i.Logger.Info().Msgf("Peer %s is added", update.Peer.ID)
 }
 
 func onLeaderUpdate(i *RpcInterface, update raft.LeaderObservation) {
 	if string(update.LeaderID) == i.getMemberInfo().NodeId {
 		i.Logger.Debug().Msg("Node is already leader")
-		i.getCurShardInfo().leader = i.getMemberInfo().NodeId
-		i.getMemberInfo().IsLeader = false
+		i.getCurShardInfo().leader = string(update.LeaderID)
+		i.getMemberInfo().IsLeader = true
 		return
 	}
 	//leadership update
@@ -204,6 +212,60 @@ func onStateUpdate(i *RpcInterface, state raft.RaftState) {
 	}
 	i.Logger.Trace().Msgf("State is now %s", state.String())
 }
+
+func ReplicatePeer(i *RpcInterface, update raft.PeerObservation) error {
+	input := &fsmPb.WriteOperation{
+		Operation: &fsmPb.WriteOperation_AddMember{AddMember: &fsmPb.AddMember{
+			NodeId:  string(update.Peer.ID),
+			Address: string(update.Peer.Address),
+		}},
+		Code: fsmPb.Operation_ADD_MEMBER,
+	}
+	val, _ := util.SerializeMessage(input)
+	res := i.Raft.Apply(val, time.Second)
+	if err := res.Error(); err != nil {
+		log.Err(err)
+		return err
+	}
+	err, isErr := res.Response().(error)
+	if isErr {
+		log.Err(err)
+		return err
+	}
+	_, isValid := res.Response().(*fsmPb.AddMemberResult)
+	if !isValid {
+		log.Err(err)
+		return err
+	}
+	return nil
+}
+
+func RemovePeer(i *RpcInterface, peerId string) error {
+	input := &fsmPb.WriteOperation{
+		Operation: &fsmPb.WriteOperation_RemoveMember{RemoveMember: &fsmPb.RemoveMember{
+			NodeId: string(peerId),
+		}},
+		Code: fsmPb.Operation_REMOVE_MEMBER,
+	}
+	val, _ := util.SerializeMessage(input)
+	res := i.Raft.Apply(val, time.Second)
+	if err := res.Error(); err != nil {
+		log.Err(err)
+		return err
+	}
+	err, isErr := res.Response().(error)
+	if isErr {
+		log.Err(err)
+		return err
+	}
+	_, isValid := res.Response().(*fsmPb.RemoveMemberResult)
+	if !isValid {
+		log.Err(err)
+		return err
+	}
+	return nil
+}
+
 func (r RpcInterface) getCurShardInfo() *ShardInfo {
 	return r.ClusterState.CurShardState.ShardInfo
 }

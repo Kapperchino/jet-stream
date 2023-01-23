@@ -4,6 +4,7 @@ import (
 	"context"
 	adminPb "github.com/Kapperchino/jet-admin/proto"
 	clusterPb "github.com/Kapperchino/jet-cluster/proto"
+	"github.com/Kapperchino/jet/factory"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"

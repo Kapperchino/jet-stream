@@ -12,7 +12,7 @@ import (
 
 type NodeState struct {
 	Topics     *bbolt.DB
-	HandlerMap map[pb.Operation]func(f *NodeState, op *pb.WriteOperation, l *raft.Log) interface{}
+	HandlerMap []func(f *NodeState, op *pb.WriteOperation, l *raft.Log) interface{}
 	ShardState *cluster.ShardState
 }
 

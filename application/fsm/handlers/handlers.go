@@ -7,14 +7,24 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func InitHandlers() map[pb.Operation]func(f *fsm.NodeState, op *pb.WriteOperation, l *raft.Log) interface{} {
-	handlerMap := make(map[pb.Operation]func(f *fsm.NodeState, op *pb.WriteOperation, l *raft.Log) interface{})
+func InitHandlers() []func(f *fsm.NodeState, op *pb.WriteOperation, l *raft.Log) interface{} {
+	handlerMap := make([]func(f *fsm.NodeState, op *pb.WriteOperation, l *raft.Log) interface{}, 100)
 	handlerMap[pb.Operation_PUBLISH] = HandlePublish
 	handlerMap[pb.Operation_CONSUME] = HandleConsume
 	handlerMap[pb.Operation_CREATE_CONSUMER] = HandleCreateConsume
 	handlerMap[pb.Operation_CREATE_TOPIC] = HandleCreateTopic
 	handlerMap[pb.Operation_ADD_MEMBER] = HandleAddMember
+	handlerMap[pb.Operation_REMOVE_MEMBER] = HandleRemoveMember
 	return handlerMap
+}
+
+func HandleRemoveMember(f *fsm.NodeState, op *pb.WriteOperation, l *raft.Log) interface{} {
+	res, err := f.RemoveMember(op.GetRemoveMember())
+	if err != nil {
+		log.Error().Err(err)
+		return err
+	}
+	return res
 }
 
 func HandleAddMember(f *fsm.NodeState, op *pb.WriteOperation, l *raft.Log) interface{} {

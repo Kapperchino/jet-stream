@@ -4,6 +4,7 @@ import (
 	"context"
 	adminPb "github.com/Kapperchino/jet-admin/proto"
 	clusterPb "github.com/Kapperchino/jet-cluster/proto"
+	"github.com/Kapperchino/jet/factory"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
@@ -104,10 +105,12 @@ func (suite *ShardsTest) TestGetShardInfoPeerDeletingNode() {
 	assert.Equal(suite.T(), "nodeA", res.GetInfo().LeaderId)
 	assert.Equal(suite.T(), len(res.GetInfo().GetMemberAddressMap()), 3)
 	server := <-suite.servers
+	server = <-suite.servers
+	server = <-suite.servers
 	server.Kill()
 	//Currently we have 2 nodes in a shard
-	time.Sleep(3 * time.Second)
-	res, err = suite.client[1].GetShardInfo(context.Background(), &clusterPb.GetShardInfoRequest{})
+	time.Sleep(15 * time.Second)
+	res, err = suite.client[0].GetShardInfo(context.Background(), &clusterPb.GetShardInfoRequest{})
 	log.Info().Msgf("%+v", res)
 	assert.Nil(suite.T(), err)
 	assert.Equal(suite.T(), "nodeA", res.GetInfo().LeaderId)
