@@ -34,3 +34,7 @@ message MemberInfo {
   string nodeId = 1;
   string address = 2;
 }
+
+message GossipMeta {
+  string url = 1;
+}

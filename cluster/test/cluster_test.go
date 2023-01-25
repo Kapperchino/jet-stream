@@ -58,7 +58,7 @@ func (suite *ClusterTest) TearDownSuite() {
 // suite.
 func (suite *ClusterTest) TestGetClusterInfo() {
 	time.Sleep(10 * time.Second)
-	res, err := suite.client[1].GetClusterInfo(context.Background(), &clusterPb.GetClusterInfoRequest{})
+	res, err := suite.client[0].GetClusterInfo(context.Background(), &clusterPb.GetClusterInfoRequest{})
 	assert.Nil(suite.T(), err)
 	log.Info().Msgf("%s", res)
 }

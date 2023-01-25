@@ -355,6 +355,53 @@ func (x *MemberInfo) GetAddress() string {
 	return ""
 }
 
+type GossipMeta struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Url string `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+}
+
+func (x *GossipMeta) Reset() {
+	*x = GossipMeta{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_cluster_proto_msgTypes[7]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GossipMeta) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GossipMeta) ProtoMessage() {}
+
+func (x *GossipMeta) ProtoReflect() protoreflect.Message {
+	mi := &file_cluster_proto_msgTypes[7]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GossipMeta.ProtoReflect.Descriptor instead.
+func (*GossipMeta) Descriptor() ([]byte, []int) {
+	return file_cluster_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GossipMeta) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
 var File_cluster_proto protoreflect.FileDescriptor
 
 var file_cluster_proto_rawDesc = []byte{
@@ -396,7 +443,9 @@ var file_cluster_proto_rawDesc = []byte{
 	0x65, 0x72, 0x49, 0x6e, 0x66, 0x6f, 0x12, 0x16, 0x0a, 0x06, 0x6e, 0x6f, 0x64, 0x65, 0x49, 0x64,
 	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x6e, 0x6f, 0x64, 0x65, 0x49, 0x64, 0x12, 0x18,
 	0x0a, 0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x32, 0x98, 0x01, 0x0a, 0x12, 0x43, 0x6c, 0x75,
+	0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x22, 0x1e, 0x0a, 0x0a, 0x47, 0x6f, 0x73, 0x73,
+	0x69, 0x70, 0x4d, 0x65, 0x74, 0x61, 0x12, 0x10, 0x0a, 0x03, 0x75, 0x72, 0x6c, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x03, 0x75, 0x72, 0x6c, 0x32, 0x98, 0x01, 0x0a, 0x12, 0x43, 0x6c, 0x75,
 	0x73, 0x74, 0x65, 0x72, 0x4d, 0x65, 0x74, 0x61, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12,
 	0x43, 0x0a, 0x0e, 0x47, 0x65, 0x74, 0x43, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x49, 0x6e, 0x66,
 	0x6f, 0x12, 0x16, 0x2e, 0x47, 0x65, 0x74, 0x43, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x49, 0x6e,
@@ -424,7 +473,7 @@ func file_cluster_proto_rawDescGZIP() []byte {
 	return file_cluster_proto_rawDescData
 }
 
-var file_cluster_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_cluster_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_cluster_proto_goTypes = []interface{}{
 	(*GetShardInfoRequest)(nil),    // 0: GetShardInfoRequest
 	(*GetShardInfoResponse)(nil),   // 1: GetShardInfoResponse
@@ -433,14 +482,15 @@ var file_cluster_proto_goTypes = []interface{}{
 	(*ClusterInfo)(nil),            // 4: ClusterInfo
 	(*ShardInfo)(nil),              // 5: ShardInfo
 	(*MemberInfo)(nil),             // 6: MemberInfo
-	nil,                            // 7: ClusterInfo.ShardMapEntry
-	nil,                            // 8: ShardInfo.MemberAddressMapEntry
+	(*GossipMeta)(nil),             // 7: GossipMeta
+	nil,                            // 8: ClusterInfo.ShardMapEntry
+	nil,                            // 9: ShardInfo.MemberAddressMapEntry
 }
 var file_cluster_proto_depIdxs = []int32{
 	5, // 0: GetShardInfoResponse.info:type_name -> ShardInfo
 	4, // 1: GetClusterInfoResponse.info:type_name -> ClusterInfo
-	7, // 2: ClusterInfo.shardMap:type_name -> ClusterInfo.ShardMapEntry
-	8, // 3: ShardInfo.memberAddressMap:type_name -> ShardInfo.MemberAddressMapEntry
+	8, // 2: ClusterInfo.shardMap:type_name -> ClusterInfo.ShardMapEntry
+	9, // 3: ShardInfo.memberAddressMap:type_name -> ShardInfo.MemberAddressMapEntry
 	5, // 4: ClusterInfo.ShardMapEntry.value:type_name -> ShardInfo
 	6, // 5: ShardInfo.MemberAddressMapEntry.value:type_name -> MemberInfo
 	2, // 6: ClusterMetaService.GetClusterInfo:input_type -> GetClusterInfoRequest
@@ -544,6 +594,18 @@ func file_cluster_proto_init() {
 				return nil
 			}
 		}
+		file_cluster_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GossipMeta); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -551,7 +613,7 @@ func file_cluster_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_cluster_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

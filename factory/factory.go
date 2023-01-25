@@ -157,7 +157,9 @@ func SetupServer(raftDir string, address string, nodeName string, gossipAddress 
 	var memberList *memberlist.Memberlist
 	if bootstrap {
 		memberListener := cluster.InitClusterListener(clusterRpc.ClusterState)
-		memberList = NewMemberList(MakeConfig(shardId, gossipAddress, memberListener), rootNode)
+		memberList = NewMemberList(MakeConfig(shardId, gossipAddress, memberListener, cluster.ClusterDelegate{
+			ClusterState: clusterRpc.ClusterState,
+		}), rootNode)
 		clusterRpc.MemberList = memberList
 	}
 	nodeState.ShardState = clusterRpc.ClusterState.CurShardState

@@ -30,7 +30,7 @@ func NewMemberList(config *memberlist.Config, rootNode string) *memberlist.Membe
 	return list
 }
 
-func MakeConfig(name string, gossipAddress string, delegate memberlist.EventDelegate) *memberlist.Config {
+func MakeConfig(name string, gossipAddress string, eventDelegate memberlist.EventDelegate, delegate memberlist.Delegate) *memberlist.Config {
 	host, port, _ := net.SplitHostPort(gossipAddress)
 	portInt, _ := strconv.Atoi(port)
 	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006/01/02 15:04:05"}
@@ -74,6 +74,7 @@ func MakeConfig(name string, gossipAddress string, delegate memberlist.EventDele
 		CIDRsAllowed:      nil, // same as allow all
 
 		QueueCheckInterval: 30 * time.Second,
-		Events:             delegate,
+		Events:             eventDelegate,
+		Delegate:           delegate,
 	}
 }
