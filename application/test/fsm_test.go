@@ -17,7 +17,7 @@ import (
 
 type FsmTest struct {
 	suite.Suite
-	client  pb.ExampleClient
+	client  pb.MessageServiceClient
 	myAddr  string
 	servers chan *factory.Server
 }
@@ -117,14 +117,14 @@ func TestFSMTestSuite(t *testing.T) {
 	suite.Run(t, new(FsmTest))
 }
 
-func createConsumer(client pb.ExampleClient, topic string) (*pb.CreateConsumerResponse, error) {
+func createConsumer(client pb.MessageServiceClient, topic string) (*pb.CreateConsumerResponse, error) {
 	res, err := client.CreateConsumer(context.Background(), &pb.CreateConsumerRequest{
 		Topic: topic,
 	})
 	return res, err
 }
 
-func consumeMessages(client pb.ExampleClient, topic string, consumerId int64) (*pb.ConsumeResponse, error) {
+func consumeMessages(client pb.MessageServiceClient, topic string, consumerId int64) (*pb.ConsumeResponse, error) {
 	res, err := client.Consume(context.Background(), &pb.ConsumeRequest{
 		Topic:      topic,
 		ConsumerId: consumerId,
@@ -132,7 +132,7 @@ func consumeMessages(client pb.ExampleClient, topic string, consumerId int64) (*
 	return res, err
 }
 
-func publishMessages(client pb.ExampleClient, topic string, messages []*pb.KeyVal, partition int64) (*pb.PublishMessageResponse, error) {
+func publishMessages(client pb.MessageServiceClient, topic string, messages []*pb.KeyVal, partition int64) (*pb.PublishMessageResponse, error) {
 	res, err := client.PublishMessages(context.Background(), &pb.PublishMessageRequest{
 		Topic:     topic,
 		Partition: partition,
@@ -141,7 +141,7 @@ func publishMessages(client pb.ExampleClient, topic string, messages []*pb.KeyVa
 	return res, err
 }
 
-func (suite *FsmTest) setupClient() pb.ExampleClient {
+func (suite *FsmTest) setupClient() pb.MessageServiceClient {
 	serviceConfig := `{"healthCheckConfig": {"serviceName": "Example"}, "loadBalancingConfig": [ { "round_robin": {} } ]}`
 	retryOpts := []grpc_retry.CallOption{
 		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(100 * time.Millisecond)),
@@ -154,7 +154,7 @@ func (suite *FsmTest) setupClient() pb.ExampleClient {
 			grpc.MaxCallRecvMsgSize(maxSize),
 			grpc.MaxCallSendMsgSize(maxSize)),
 		grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(retryOpts...)))
-	return pb.NewExampleClient(conn)
+	return pb.NewMessageServiceClient(conn)
 }
 
 func initFolders() {

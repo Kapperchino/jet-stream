@@ -2,7 +2,7 @@ syntax = "proto3";
 
 option go_package = "github.com/Kapperchino/jet-application/proto";
 
-service Example {
+service MessageService {
   rpc PublishMessages(PublishMessageRequest) returns (PublishMessageResponse) {}
   rpc CreateConsumer(CreateConsumerRequest) returns (CreateConsumerResponse) {}
   rpc Consume(ConsumeRequest) returns (ConsumeResponse) {}

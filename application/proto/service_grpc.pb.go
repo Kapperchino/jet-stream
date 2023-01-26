@@ -18,194 +18,194 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// ExampleClient is the client API for Example service.
+// MessageServiceClient is the client API for MessageService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type ExampleClient interface {
+type MessageServiceClient interface {
 	PublishMessages(ctx context.Context, in *PublishMessageRequest, opts ...grpc.CallOption) (*PublishMessageResponse, error)
 	CreateConsumer(ctx context.Context, in *CreateConsumerRequest, opts ...grpc.CallOption) (*CreateConsumerResponse, error)
 	Consume(ctx context.Context, in *ConsumeRequest, opts ...grpc.CallOption) (*ConsumeResponse, error)
 	CreateTopic(ctx context.Context, in *CreateTopicRequest, opts ...grpc.CallOption) (*CreateTopicResponse, error)
 }
 
-type exampleClient struct {
+type messageServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewExampleClient(cc grpc.ClientConnInterface) ExampleClient {
-	return &exampleClient{cc}
+func NewMessageServiceClient(cc grpc.ClientConnInterface) MessageServiceClient {
+	return &messageServiceClient{cc}
 }
 
-func (c *exampleClient) PublishMessages(ctx context.Context, in *PublishMessageRequest, opts ...grpc.CallOption) (*PublishMessageResponse, error) {
+func (c *messageServiceClient) PublishMessages(ctx context.Context, in *PublishMessageRequest, opts ...grpc.CallOption) (*PublishMessageResponse, error) {
 	out := new(PublishMessageResponse)
-	err := c.cc.Invoke(ctx, "/Example/PublishMessages", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/MessageService/PublishMessages", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *exampleClient) CreateConsumer(ctx context.Context, in *CreateConsumerRequest, opts ...grpc.CallOption) (*CreateConsumerResponse, error) {
+func (c *messageServiceClient) CreateConsumer(ctx context.Context, in *CreateConsumerRequest, opts ...grpc.CallOption) (*CreateConsumerResponse, error) {
 	out := new(CreateConsumerResponse)
-	err := c.cc.Invoke(ctx, "/Example/CreateConsumer", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/MessageService/CreateConsumer", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *exampleClient) Consume(ctx context.Context, in *ConsumeRequest, opts ...grpc.CallOption) (*ConsumeResponse, error) {
+func (c *messageServiceClient) Consume(ctx context.Context, in *ConsumeRequest, opts ...grpc.CallOption) (*ConsumeResponse, error) {
 	out := new(ConsumeResponse)
-	err := c.cc.Invoke(ctx, "/Example/Consume", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/MessageService/Consume", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *exampleClient) CreateTopic(ctx context.Context, in *CreateTopicRequest, opts ...grpc.CallOption) (*CreateTopicResponse, error) {
+func (c *messageServiceClient) CreateTopic(ctx context.Context, in *CreateTopicRequest, opts ...grpc.CallOption) (*CreateTopicResponse, error) {
 	out := new(CreateTopicResponse)
-	err := c.cc.Invoke(ctx, "/Example/CreateTopic", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/MessageService/CreateTopic", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// ExampleServer is the server API for Example service.
-// All implementations must embed UnimplementedExampleServer
+// MessageServiceServer is the server API for MessageService service.
+// All implementations must embed UnimplementedMessageServiceServer
 // for forward compatibility
-type ExampleServer interface {
+type MessageServiceServer interface {
 	PublishMessages(context.Context, *PublishMessageRequest) (*PublishMessageResponse, error)
 	CreateConsumer(context.Context, *CreateConsumerRequest) (*CreateConsumerResponse, error)
 	Consume(context.Context, *ConsumeRequest) (*ConsumeResponse, error)
 	CreateTopic(context.Context, *CreateTopicRequest) (*CreateTopicResponse, error)
-	mustEmbedUnimplementedExampleServer()
+	mustEmbedUnimplementedMessageServiceServer()
 }
 
-// UnimplementedExampleServer must be embedded to have forward compatible implementations.
-type UnimplementedExampleServer struct {
+// UnimplementedMessageServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedMessageServiceServer struct {
 }
 
-func (UnimplementedExampleServer) PublishMessages(context.Context, *PublishMessageRequest) (*PublishMessageResponse, error) {
+func (UnimplementedMessageServiceServer) PublishMessages(context.Context, *PublishMessageRequest) (*PublishMessageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PublishMessages not implemented")
 }
-func (UnimplementedExampleServer) CreateConsumer(context.Context, *CreateConsumerRequest) (*CreateConsumerResponse, error) {
+func (UnimplementedMessageServiceServer) CreateConsumer(context.Context, *CreateConsumerRequest) (*CreateConsumerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateConsumer not implemented")
 }
-func (UnimplementedExampleServer) Consume(context.Context, *ConsumeRequest) (*ConsumeResponse, error) {
+func (UnimplementedMessageServiceServer) Consume(context.Context, *ConsumeRequest) (*ConsumeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Consume not implemented")
 }
-func (UnimplementedExampleServer) CreateTopic(context.Context, *CreateTopicRequest) (*CreateTopicResponse, error) {
+func (UnimplementedMessageServiceServer) CreateTopic(context.Context, *CreateTopicRequest) (*CreateTopicResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateTopic not implemented")
 }
-func (UnimplementedExampleServer) mustEmbedUnimplementedExampleServer() {}
+func (UnimplementedMessageServiceServer) mustEmbedUnimplementedMessageServiceServer() {}
 
-// UnsafeExampleServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to ExampleServer will
+// UnsafeMessageServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to MessageServiceServer will
 // result in compilation errors.
-type UnsafeExampleServer interface {
-	mustEmbedUnimplementedExampleServer()
+type UnsafeMessageServiceServer interface {
+	mustEmbedUnimplementedMessageServiceServer()
 }
 
-func RegisterExampleServer(s grpc.ServiceRegistrar, srv ExampleServer) {
-	s.RegisterService(&Example_ServiceDesc, srv)
+func RegisterMessageServiceServer(s grpc.ServiceRegistrar, srv MessageServiceServer) {
+	s.RegisterService(&MessageService_ServiceDesc, srv)
 }
 
-func _Example_PublishMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _MessageService_PublishMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PublishMessageRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ExampleServer).PublishMessages(ctx, in)
+		return srv.(MessageServiceServer).PublishMessages(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/Example/PublishMessages",
+		FullMethod: "/MessageService/PublishMessages",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ExampleServer).PublishMessages(ctx, req.(*PublishMessageRequest))
+		return srv.(MessageServiceServer).PublishMessages(ctx, req.(*PublishMessageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Example_CreateConsumer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _MessageService_CreateConsumer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateConsumerRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ExampleServer).CreateConsumer(ctx, in)
+		return srv.(MessageServiceServer).CreateConsumer(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/Example/CreateConsumer",
+		FullMethod: "/MessageService/CreateConsumer",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ExampleServer).CreateConsumer(ctx, req.(*CreateConsumerRequest))
+		return srv.(MessageServiceServer).CreateConsumer(ctx, req.(*CreateConsumerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Example_Consume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _MessageService_Consume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ConsumeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ExampleServer).Consume(ctx, in)
+		return srv.(MessageServiceServer).Consume(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/Example/Consume",
+		FullMethod: "/MessageService/Consume",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ExampleServer).Consume(ctx, req.(*ConsumeRequest))
+		return srv.(MessageServiceServer).Consume(ctx, req.(*ConsumeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Example_CreateTopic_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _MessageService_CreateTopic_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateTopicRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ExampleServer).CreateTopic(ctx, in)
+		return srv.(MessageServiceServer).CreateTopic(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/Example/CreateTopic",
+		FullMethod: "/MessageService/CreateTopic",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ExampleServer).CreateTopic(ctx, req.(*CreateTopicRequest))
+		return srv.(MessageServiceServer).CreateTopic(ctx, req.(*CreateTopicRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// Example_ServiceDesc is the grpc.ServiceDesc for Example service.
+// MessageService_ServiceDesc is the grpc.ServiceDesc for MessageService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Example_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "Example",
-	HandlerType: (*ExampleServer)(nil),
+var MessageService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "MessageService",
+	HandlerType: (*MessageServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "PublishMessages",
-			Handler:    _Example_PublishMessages_Handler,
+			Handler:    _MessageService_PublishMessages_Handler,
 		},
 		{
 			MethodName: "CreateConsumer",
-			Handler:    _Example_CreateConsumer_Handler,
+			Handler:    _MessageService_CreateConsumer_Handler,
 		},
 		{
 			MethodName: "Consume",
-			Handler:    _Example_Consume_Handler,
+			Handler:    _MessageService_Consume_Handler,
 		},
 		{
 			MethodName: "CreateTopic",
-			Handler:    _Example_CreateTopic_Handler,
+			Handler:    _MessageService_CreateTopic_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

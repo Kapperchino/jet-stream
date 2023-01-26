@@ -126,7 +126,7 @@ func SetupServer(badgerDir string, raftDir string, address string, nodeName stri
 		log.Fatal().Msgf("failed to start raft: %v", err)
 	}
 	s := grpc.NewServer(grpc.MaxRecvMsgSize(1 * 1024 * 1024 * 1024))
-	pb.RegisterExampleServer(s, &application.RpcInterface{
+	pb.RegisterMessageServiceServer(s, &application.RpcInterface{
 		NodeState: nodeState,
 		Raft:      r,
 	})

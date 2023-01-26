@@ -14,7 +14,7 @@ import (
 type RpcInterface struct {
 	NodeState *fsm.NodeState
 	Raft      *raft.Raft
-	pb.UnimplementedExampleServer
+	pb.UnimplementedMessageServiceServer
 }
 
 func PublishMessagesInternal(r RpcInterface, req *pb.PublishMessageRequest) ([]*pb.Message, error) {
