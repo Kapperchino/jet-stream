@@ -17,7 +17,6 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/raft"
-	boltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
@@ -58,15 +57,23 @@ func NewRaft(myID, myAddress string, fsm raft.FSM, bootStrap bool, raftDir strin
 	})
 
 	baseDir := filepath.Join(raftDir, myID)
-	ldb, err := boltdb.NewBoltStore(filepath.Join(baseDir, "logs.dat"))
+	logDir := filepath.Join(baseDir, "logs")
+	ops := badger.DefaultOptions(logDir)
+	ops.InMemory = false
+	db, err := badger.Open(ops)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`boltdb.NewBoltStore(%q): %v`, filepath.Join(baseDir, "logs.dat"), err)
 	}
+	ldb := BadgerLogStore{LogStore: db}
 
-	sdb, err := boltdb.NewBoltStore(filepath.Join(baseDir, "stable.dat"))
+	stableDir := filepath.Join(baseDir, "stable")
+	ops = badger.DefaultOptions(stableDir)
+	ops.InMemory = false
+	db, err = badger.Open(ops)
 	if err != nil {
-		return nil, nil, fmt.Errorf(`boltdb.NewBoltStore(%q): %v`, filepath.Join(baseDir, "stable.dat"), err)
+		return nil, nil, fmt.Errorf(`boltdb.NewBoltStore(%q): %v`, filepath.Join(baseDir, "logs.dat"), err)
 	}
+	sdb := BadgerLogStore{LogStore: db}
 
 	fss, err := raft.NewFileSnapshotStore(baseDir, 3, os.Stderr)
 	if err != nil {
@@ -123,7 +130,7 @@ func SetupServer(badgerDir string, raftDir string, address string, nodeName stri
 	if err != nil {
 		log.Fatal().Msgf("failed to start raft: %v", err)
 	}
-	s := grpc.NewServer()
+	s := grpc.NewServer(grpc.MaxRecvMsgSize(1 * 1024 * 1024 * 1024))
 	pb.RegisterExampleServer(s, &application.RpcInterface{
 		NodeState: nodeState,
 		Raft:      r,

@@ -51,7 +51,7 @@ func (suite *FsmTest) Test_Publish() {
 	})
 	assert.Nil(suite.T(), err)
 	var arr []*pb.KeyVal
-	token := make([]byte, 3*1024*1024)
+	token := make([]byte, 10*1024*1024)
 	rand.Read(token)
 	arr = append(arr, &pb.KeyVal{
 		Key: []byte("joe"),
