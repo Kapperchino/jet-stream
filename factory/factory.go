@@ -12,7 +12,6 @@ import (
 	"github.com/Kapperchino/jet-leader-rpc/leaderhealth"
 	transport "github.com/Kapperchino/jet-transport"
 	"github.com/Kapperchino/jet/util"
-	"github.com/dgraph-io/badger/v3"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/memberlist"
@@ -58,18 +57,14 @@ func NewRaft(myID, myAddress string, fsm raft.FSM, bootStrap bool, raftDir strin
 
 	baseDir := filepath.Join(raftDir, myID)
 	logDir := filepath.Join(baseDir, "logs")
-	ops := badger.DefaultOptions(logDir)
-	ops.InMemory = false
-	db, err := badger.Open(ops)
+	db, err := NewBadger(logDir)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`boltdb.NewBoltStore(%q): %v`, filepath.Join(baseDir, "logs.dat"), err)
 	}
 	ldb := BadgerLogStore{LogStore: db}
 
 	stableDir := filepath.Join(baseDir, "stable")
-	ops = badger.DefaultOptions(stableDir)
-	ops.InMemory = false
-	db, err = badger.Open(ops)
+	db, err = NewBadger(stableDir)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`boltdb.NewBoltStore(%q): %v`, filepath.Join(baseDir, "logs.dat"), err)
 	}
@@ -118,8 +113,8 @@ func SetupServer(badgerDir string, raftDir string, address string, nodeName stri
 		log.Fatal().Msgf("failed to listen: %v", err)
 	}
 
-	db, _ := badger.Open(badger.DefaultOptions(badgerDir + nodeName + "/Meta"))
-	messages, _ := badger.Open(badger.DefaultOptions("./testData/badger/" + nodeName + "/Messages"))
+	db, _ := NewBadger(badgerDir + nodeName + "/Meta")
+	messages, _ := NewBadger("./testData/badger/" + nodeName + "/Messages")
 	nodeState := &fsm.NodeState{
 		MetaStore:    db,
 		MessageStore: messages,
