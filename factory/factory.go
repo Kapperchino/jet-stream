@@ -12,6 +12,7 @@ import (
 	"github.com/Kapperchino/jet-leader-rpc/leaderhealth"
 	transport "github.com/Kapperchino/jet-transport"
 	"github.com/Kapperchino/jet/util"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/memberlist"
@@ -19,7 +20,6 @@ import (
 	boltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"go.etcd.io/bbolt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"net"
@@ -98,7 +98,7 @@ func NewRaft(myID, myAddress string, fsm raft.FSM, bootStrap bool, raftDir strin
 	return r, tm, nil
 }
 
-func SetupServer(raftDir string, address string, nodeName string, gossipAddress string, rootNode string, bootstrap bool, server chan *Server) {
+func SetupServer(badgerDir string, raftDir string, address string, nodeName string, gossipAddress string, rootNode string, bootstrap bool, server chan *Server) {
 	_, port, err := net.SplitHostPort(address)
 	if err != nil {
 		log.Fatal().Msgf("failed to parse local address (%q): %v", address, err)
@@ -111,10 +111,12 @@ func SetupServer(raftDir string, address string, nodeName string, gossipAddress 
 		log.Fatal().Msgf("failed to listen: %v", err)
 	}
 
-	db, _ := bbolt.Open("./testData/bolt_"+nodeName, 0666, nil)
+	db, _ := badger.Open(badger.DefaultOptions(badgerDir + nodeName + "/Meta"))
+	messages, _ := badger.Open(badger.DefaultOptions("./testData/badger/" + nodeName + "/Messages"))
 	nodeState := &fsm.NodeState{
-		Topics:     db,
-		HandlerMap: handlers.InitHandlers(),
+		MetaStore:    db,
+		MessageStore: messages,
+		HandlerMap:   handlers.InitHandlers(),
 	}
 
 	r, tm, err := NewRaft(nodeName, address, nodeState, bootstrap, raftDir)

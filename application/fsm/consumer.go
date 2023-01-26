@@ -5,10 +5,10 @@ import (
 	"encoding/gob"
 	"fmt"
 	pb "github.com/Kapperchino/jet-application/proto"
-	"github.com/Kapperchino/jet/config"
 	"github.com/Kapperchino/jet/util"
-	"go.etcd.io/bbolt"
-	"log"
+	"github.com/dgraph-io/badger/v3"
+	"github.com/rs/zerolog/log"
+	"strconv"
 )
 
 type Consumer struct {
@@ -27,9 +27,10 @@ func (f *NodeState) CreateConsumer(req *pb.CreateConsumer) (interface{}, error) 
 		return nil, err
 	}
 	response := new(pb.CreateConsumerResponse)
-	err = f.Topics.Update(func(tx *bbolt.Tx) error {
-		b, _ := tx.CreateBucketIfNotExists([]byte("Consumers"))
-		id, _ := b.NextSequence()
+	seq, err := f.MessageStore.GetSequence([]byte("Consumer-"), 1000)
+	defer seq.Release()
+	err = f.MetaStore.Update(func(tx *badger.Txn) error {
+		id, _ := seq.Next()
 		list := make([]Checkpoint, len(topic.Partitions))
 		for i := 0; i < len(topic.Partitions); i++ {
 			list = append(list, Checkpoint{
@@ -48,7 +49,8 @@ func (f *NodeState) CreateConsumer(req *pb.CreateConsumer) (interface{}, error) 
 			log.Printf("error encoding Topic, %s", err)
 			return fmt.Errorf("error encoding Topic, %w", err)
 		}
-		err = b.Put(util.ULongToBytes(id), buf.Bytes())
+		consumerId := []byte("Consumer-" + strconv.FormatUint(id, 10))
+		err = tx.Set(consumerId, buf.Bytes())
 		if err != nil {
 			log.Printf("error putting items in bucket, %s", err)
 			return fmt.Errorf("error putting items in bucket, %w", err)
@@ -71,49 +73,37 @@ func (f *NodeState) Consume(req *pb.Consume) (interface{}, error) {
 		Messages:  make([]*pb.Message, 0),
 		LastIndex: 0,
 	}
-	err = f.Topics.View(func(tx *bbolt.Tx) error {
-		consumers := tx.Bucket([]byte("Consumers"))
-		if consumers == nil {
-			return fmt.Errorf("bucket does not exist")
-		}
-		consumerBytes := consumers.Get(util.ULongToBytes(uint64(req.GetId())))
-		if consumerBytes == nil {
-			return fmt.Errorf("consumer with id %d does not exist", req.GetId())
-		}
-		var consumer *Consumer
-		buf := bytes.NewBuffer(consumerBytes)
-		dec := gob.NewDecoder(buf)
-		if err := dec.Decode(&consumer); err != nil {
-			return fmt.Errorf("decoding issues with this %w", err)
-		}
-		baseBucket := tx.Bucket([]byte("Topics"))
-		if baseBucket == nil {
-			return fmt.Errorf("bucket does not exist")
-		}
-		topicBucket := baseBucket.Bucket([]byte(req.GetTopic()))
-		if topicBucket == nil {
-			return fmt.Errorf("bucket does not exit")
+	err = f.MetaStore.View(func(tx *badger.Txn) error {
+		consumer, err := f.getConsumer(uint64(req.GetId()))
+		if err != nil {
+			log.Err(err).Msgf("Error getting consumer")
+			return err
 		}
 		for i, _ := range topic.Partitions {
 			curCheckpoint := consumer.Checkpoints[i]
-			partitionBucket := topicBucket.Bucket(util.ULongToBytes(uint64(i)))
-			if partitionBucket == nil {
-				continue
-			}
-			cursor := partitionBucket.Cursor()
-			if err != nil {
-				return fmt.Errorf("Error getting cursor %w", err)
-			}
 			var buf []*pb.Message
 			startingOffset := curCheckpoint.Offset
-			for k, v := cursor.Seek(util.ULongToBytes(curCheckpoint.Offset)); k != nil && util.BytesToULong(k) < startingOffset+config.CONSUME_CHUNK; k, v = cursor.Next() {
-				msg := &pb.Message{}
-				err := util.DeserializeMessage(v, msg)
+			opts := badger.DefaultIteratorOptions
+			opts.PrefetchSize = 100
+			it := tx.NewIterator(opts)
+			defer it.Close()
+			key := topic.Name + "-" + strconv.FormatInt(int64(i), 10)
+			it.Seek([]byte(key + "-" + strconv.FormatUint(startingOffset, 10)))
+			for it.ValidForPrefix([]byte(key)); it.Valid(); it.Next() {
+				//now we need to seek until the message is found
+				item := it.Item()
+				err := item.Value(func(v []byte) error {
+					var message pb.Message
+					err := util.DeserializeMessage(v, &message)
+					if err != nil {
+						return err
+					}
+					buf = append(buf, &message)
+					return nil
+				})
 				if err != nil {
-					return fmt.Errorf("error deseralize %w", err)
+					return err
 				}
-				curCheckpoint.Offset++
-				buf = append(buf, msg)
 			}
 			res.Messages = append(res.Messages, buf...)
 		}
@@ -127,16 +117,17 @@ func (f *NodeState) Consume(req *pb.Consume) (interface{}, error) {
 
 func (f *NodeState) getConsumer(consumerId uint64) (*Consumer, error) {
 	var consumer *Consumer
-	err := f.Topics.View(func(tx *bbolt.Tx) error {
-		b := tx.Bucket([]byte("Consumers"))
-		if b == nil {
+	err := f.MetaStore.View(func(tx *badger.Txn) error {
+		v, err := tx.Get([]byte("Consumer-" + strconv.FormatUint(consumerId, 10)))
+		if err != nil {
 			return nil
 		}
-		v := b.Get(util.ULongToBytes(consumerId))
-		if v == nil {
+		var vbytes []byte
+		v.Value(func(val []byte) error {
+			vbytes = val
 			return nil
-		}
-		buf := bytes.NewBuffer(v)
+		})
+		buf := bytes.NewBuffer(vbytes)
 		dec := gob.NewDecoder(buf)
 		if err := dec.Decode(&consumer); err != nil {
 			return fmt.Errorf("decoding issues with this %w", err)

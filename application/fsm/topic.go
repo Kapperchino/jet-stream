@@ -5,9 +5,8 @@ import (
 	"encoding/gob"
 	"fmt"
 	pb "github.com/Kapperchino/jet-application/proto"
-	"github.com/serialx/hashring"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/spaolacci/murmur3"
-	"go.etcd.io/bbolt"
 	"log"
 	"strconv"
 )
@@ -15,7 +14,6 @@ import (
 type Topic struct {
 	Name       string
 	Partitions []Partition
-	hashRing   *hashring.HashRing
 }
 
 type Partition struct {
@@ -33,17 +31,10 @@ func (f *NodeState) CreateTopic(req *pb.CreateTopic) (interface{}, error) {
 	newTopic := Topic{
 		Name:       req.GetTopic(),
 		Partitions: []Partition{},
-		hashRing:   nil,
 	}
-	hasher := murmur3.New64()
-	var partitionHashed []string
 	for i := int64(0); i < req.GetPartitions(); i++ {
 		newTopic.Partitions = append(newTopic.Partitions, f.CreatePartition(i, req.GetTopic()))
-		_, _ = hasher.Write(make([]byte, i))
-		partitionHashed = append(partitionHashed, strconv.FormatUint(hasher.Sum64(), 2))
-		hasher.Reset()
 	}
-	newTopic.hashRing = hashring.New(partitionHashed)
 	//seralize Topic and put in db
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
@@ -51,9 +42,8 @@ func (f *NodeState) CreateTopic(req *pb.CreateTopic) (interface{}, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error encoding Topic")
 	}
-	err = f.Topics.Update(func(tx *bbolt.Tx) error {
-		b, _ := tx.CreateBucketIfNotExists([]byte("TopicsMeta"))
-		err = b.Put([]byte(newTopic.Name), buf.Bytes())
+	err = f.MetaStore.Update(func(tx *badger.Txn) error {
+		err = tx.Set([]byte(newTopic.Name), buf.Bytes())
 		if err != nil {
 			return err
 		}
@@ -68,16 +58,17 @@ func (f *NodeState) CreateTopic(req *pb.CreateTopic) (interface{}, error) {
 
 func (f *NodeState) getTopic(topicName string) (*Topic, error) {
 	var curTopic *Topic
-	err := f.Topics.View(func(tx *bbolt.Tx) error {
-		b := tx.Bucket([]byte("TopicsMeta"))
-		if b == nil {
+	err := f.MetaStore.View(func(tx *badger.Txn) error {
+		v, err := tx.Get([]byte(topicName))
+		if err != nil {
 			return nil
 		}
-		v := b.Get([]byte(topicName))
-		if v == nil {
+		var valBytes []byte
+		v.Value(func(val []byte) error {
+			valBytes = val
 			return nil
-		}
-		buf := bytes.NewBuffer(v)
+		})
+		buf := bytes.NewBuffer(valBytes)
 		dec := gob.NewDecoder(buf)
 		if err := dec.Decode(&curTopic); err != nil {
 			log.Fatal(err)
@@ -90,7 +81,6 @@ func (f *NodeState) getTopic(topicName string) (*Topic, error) {
 			partitionHashed = append(partitionHashed, strconv.FormatUint(hasher.Sum64(), 2))
 			hasher.Reset()
 		}
-		curTopic.hashRing = hashring.New(partitionHashed)
 		return nil
 	})
 	if curTopic == nil {

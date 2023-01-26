@@ -29,7 +29,7 @@ type ClusterTest struct {
 const (
 	bufSize  = 1024 * 1024 * 100
 	raftDir  = "./testData/raft"
-	testData = "./testData"
+	testData = "./testData/"
 )
 
 // Make sure that VariableThatShouldStartAtFive is set to five
@@ -40,9 +40,9 @@ func (suite *ClusterTest) SetupSuite() {
 	suite.nodeName = [2]string{"nodeA", "nodeB"}
 	suite.servers = make(chan *factory.Server, 5)
 	log.Print("Starting the server")
-	go factory.SetupServer(raftDir, suite.address[0], suite.nodeName[0], "localhost:8081", "", true, suite.servers)
+	go factory.SetupServer(testData, raftDir, suite.address[0], suite.nodeName[0], "localhost:8081", "", true, suite.servers)
 	time.Sleep(5 * time.Second)
-	go factory.SetupServer(raftDir, suite.address[1], suite.nodeName[1], "localhost:8083", "localhost:8081", true, suite.servers)
+	go factory.SetupServer(testData, raftDir, suite.address[1], suite.nodeName[1], "localhost:8083", "localhost:8081", true, suite.servers)
 	log.Print("Starting the client")
 	suite.client[0] = suite.setupClient(suite.address[0])
 	suite.client[1] = suite.setupClient(suite.address[1])

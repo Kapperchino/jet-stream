@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	pb "github.com/Kapperchino/jet-application/proto"
+	"github.com/Kapperchino/jet/factory"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
@@ -24,7 +25,7 @@ type FsmTest struct {
 const (
 	bufSize  = 1024 * 1024 * 100
 	raftDir  = "./testData/raft"
-	testData = "./testData"
+	testData = "./testData/"
 )
 
 func (suite *FsmTest) SetupSuite() {
@@ -32,7 +33,7 @@ func (suite *FsmTest) SetupSuite() {
 	suite.servers = make(chan *factory.Server, 5)
 	suite.myAddr = "localhost:8080"
 	log.Printf("Starting the server")
-	go factory.SetupServer(raftDir, suite.myAddr, "nodeA", "localhost:8081", "", true, suite.servers)
+	go factory.SetupServer(testData, raftDir, suite.myAddr, "nodeA", "localhost:8081", "", true, suite.servers)
 	time.Sleep(3 * time.Second)
 	log.Printf("Starting the client")
 	suite.client = suite.setupClient()
@@ -58,6 +59,9 @@ func (suite *FsmTest) Test_Publish() {
 	})
 	for x := 0; x < 10; x++ {
 		res, err := publishMessages(suite.client, "Test_Publish", arr, 0)
+		for _, message := range res.GetMessages() {
+			log.Info().Bytes("key", message.Key).Int64("offset", message.Offset).Msgf("message")
+		}
 		assert.Nil(suite.T(), err)
 		assert.NotNil(suite.T(), res)
 	}

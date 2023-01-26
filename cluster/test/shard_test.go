@@ -34,9 +34,9 @@ func (suite *ShardsTest) SetupSuite() {
 	suite.nodeName = [2]string{"nodeA", "nodeB"}
 	suite.servers = make(chan *factory.Server, 5)
 	log.Print("Starting the server")
-	go factory.SetupServer(raftDir, suite.address[0], suite.nodeName[0], "localhost:8081", "", true, suite.servers)
+	go factory.SetupServer(testData, raftDir, suite.address[0], suite.nodeName[0], "localhost:8081", "", true, suite.servers)
 	time.Sleep(5 * time.Second)
-	go factory.SetupServer(raftDir, suite.address[1], suite.nodeName[1], "localhost:8083", "localhost:8081", false, suite.servers)
+	go factory.SetupServer(testData, raftDir, suite.address[1], suite.nodeName[1], "localhost:8083", "localhost:8081", false, suite.servers)
 	log.Print("Starting the client")
 	suite.client[0] = suite.setupClient(suite.address[0])
 	suite.adminClient = suite.setupAdminClient(suite.address[0])
@@ -168,7 +168,7 @@ func (suite *ShardsTest) setupAdminClient(address string) adminPb.RaftAdminClien
 }
 
 func (suite *ShardsTest) addNodeC() {
-	go factory.SetupServer(raftDir, "localhost:8084", "nodeC", "localhost:8085", "localhost:8081", false, suite.servers)
+	go factory.SetupServer(testData, raftDir, "localhost:8084", "nodeC", "localhost:8085", "localhost:8081", false, suite.servers)
 	_, err := suite.adminClient.AddVoter(context.Background(), &adminPb.AddVoterRequest{
 		Id:            "nodeC",
 		Address:       "localhost:8084",

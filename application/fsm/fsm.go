@@ -4,16 +4,17 @@ import (
 	pb "github.com/Kapperchino/jet-application/proto"
 	cluster "github.com/Kapperchino/jet-cluster"
 	"github.com/Kapperchino/jet/util"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/hashicorp/raft"
 	"github.com/rs/zerolog/log"
-	"go.etcd.io/bbolt"
 	"io"
 )
 
 type NodeState struct {
-	Topics     *bbolt.DB
-	HandlerMap []func(f *NodeState, op *pb.WriteOperation, l *raft.Log) interface{}
-	ShardState *cluster.ShardState
+	MetaStore    *badger.DB
+	MessageStore *badger.DB
+	HandlerMap   []func(f *NodeState, op *pb.WriteOperation, l *raft.Log) interface{}
+	ShardState   *cluster.ShardState
 }
 
 var _ raft.FSM = &NodeState{}

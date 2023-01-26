@@ -1,10 +1,12 @@
 package fsm
 
 import (
+	"fmt"
 	pb "github.com/Kapperchino/jet-application/proto"
 	"github.com/Kapperchino/jet/util"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/rs/zerolog/log"
-	"go.etcd.io/bbolt"
+	"strconv"
 )
 
 func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, error) {
@@ -13,30 +15,7 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 		return nil, err
 	}
 	var res []*pb.Message
-	var lastRaftIndex uint64
-	err = f.Topics.View(func(tx *bbolt.Tx) error {
-		baseBucket := tx.Bucket([]byte("Topics"))
-		if baseBucket == nil {
-			return nil
-		}
-		b := baseBucket.Bucket([]byte(curTopic.Name))
-		if b == nil {
-			return nil
-		}
-		buffer := util.ULongToBytes(uint64(req.GetPartition()))
-		b = b.Bucket(buffer)
-		if b == nil {
-			return nil
-		}
-		_, val := b.Cursor().Last()
-		var lastMsg pb.Message
-		err := util.DeserializeMessage(val, &lastMsg)
-		if err != nil {
-			return err
-		}
-		lastRaftIndex = lastMsg.RaftIndex
-		return nil
-	})
+	lastRaftIndex, err := f.getLastIndex(req.GetTopic(), req.GetPartition())
 	if err != nil {
 		log.Error().Msg("Cannot get the latest raftIndex")
 		log.Err(err)
@@ -47,24 +26,12 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 		return nil, nil
 	}
 	newOffset := uint64(0)
-	err = f.Topics.Batch(func(tx *bbolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte("Topics"))
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		log.Error().Msg("Cannot create topic")
-		log.Err(err)
-		return nil, err
-	}
+	key := req.Topic + "-" + strconv.FormatInt(req.Partition, 10)
+	seq, err := f.MessageStore.GetSequence([]byte(key), 1000)
+	defer seq.Release()
 	for _, m := range req.GetMessages() {
-		err = f.Topics.Batch(func(tx *bbolt.Tx) error {
-			baseBucket := tx.Bucket([]byte("Topics"))
-			b, _ := baseBucket.CreateBucketIfNotExists([]byte(curTopic.Name))
-			b, _ = b.CreateBucketIfNotExists(util.ULongToBytes(uint64(req.GetPartition())))
-			offset, _ := b.NextSequence()
+		err = f.MetaStore.Update(func(tx *badger.Txn) error {
+			offset, _ := seq.Next()
 			newOffset = offset
 			newMsg := &pb.Message{
 				Key:       m.GetKey(),
@@ -80,7 +47,8 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 				log.Err(err)
 				return err
 			}
-			err = b.Put(util.ULongToBytes(offset), byteProto)
+			msgKey := key + "-" + strconv.FormatUint(offset, 10)
+			err = tx.Set([]byte(msgKey), byteProto)
 			if err != nil {
 				return err
 			}
@@ -95,4 +63,38 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 	}
 	curTopic.Partitions[req.GetPartition()].Offset = newOffset
 	return res, nil
+}
+
+func (f *NodeState) getLastIndex(topic string, partition int64) (uint64, error) {
+	var lastRaftIndex uint64
+	err := f.MetaStore.View(func(tx *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.Reverse = true
+		opts.PrefetchSize = 100
+		it := tx.NewIterator(opts)
+		defer it.Close()
+		key := topic + "-" + strconv.FormatInt(partition, 10)
+		for it.ValidForPrefix([]byte(key)); it.Valid(); it.Next() {
+			item := it.Item()
+			k := item.Key()
+			err := item.Value(func(v []byte) error {
+				fmt.Printf("key=%s, value=%s\n", k, v)
+				var message pb.Message
+				err := util.DeserializeMessage(v, &message)
+				if err != nil {
+					return err
+				}
+				lastRaftIndex = message.RaftIndex
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return lastRaftIndex, err
+	}
+	return lastRaftIndex, nil
 }
