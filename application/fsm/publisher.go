@@ -15,7 +15,7 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 		return nil, err
 	}
 	var res []*pb.Message
-	lastRaftIndex, err := f.getLastIndex(req.GetTopic(), req.GetPartition())
+	lastRaftIndex, err := f.getLastIndex(req.GetTopic(), int64(req.GetPartition()))
 	if err != nil {
 		log.Error().Msg("Cannot get the latest raftIndex")
 		log.Err(err)
@@ -26,7 +26,7 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 		return nil, nil
 	}
 	newOffset := uint64(0)
-	key := req.Topic + "-" + strconv.FormatInt(req.Partition, 10)
+	key := req.Topic + "-" + strconv.FormatUint(req.Partition, 10)
 	seq, err := f.MessageStore.GetSequence([]byte(key), 1000)
 	defer seq.Release()
 	for _, m := range req.GetMessages() {
@@ -38,7 +38,7 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 				Payload:   m.GetVal(),
 				Topic:     req.GetTopic(),
 				Partition: req.GetPartition(),
-				Offset:    int64(offset),
+				Offset:    offset,
 				RaftIndex: raftIndex,
 			}
 			byteProto, err := util.SerializeMessage(newMsg)

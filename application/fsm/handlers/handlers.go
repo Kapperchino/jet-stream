@@ -10,12 +10,21 @@ import (
 func InitHandlers() []func(f *fsm.NodeState, op *pb.WriteOperation, l *raft.Log) interface{} {
 	handlerMap := make([]func(f *fsm.NodeState, op *pb.WriteOperation, l *raft.Log) interface{}, 100)
 	handlerMap[pb.Operation_PUBLISH] = HandlePublish
-	handlerMap[pb.Operation_CONSUME] = HandleConsume
+	handlerMap[pb.Operation_ACK] = HandleAck
 	handlerMap[pb.Operation_CREATE_CONSUMER] = HandleCreateConsume
 	handlerMap[pb.Operation_CREATE_TOPIC] = HandleCreateTopic
 	handlerMap[pb.Operation_ADD_MEMBER] = HandleAddMember
 	handlerMap[pb.Operation_REMOVE_MEMBER] = HandleRemoveMember
 	return handlerMap
+}
+
+func HandleAck(f *fsm.NodeState, op *pb.WriteOperation, l *raft.Log) interface{} {
+	res, err := f.Ack(op.GetAck())
+	if err != nil {
+		log.Error().Err(err)
+		return err
+	}
+	return res
 }
 
 func HandleRemoveMember(f *fsm.NodeState, op *pb.WriteOperation, l *raft.Log) interface{} {
@@ -47,15 +56,6 @@ func HandlePublish(f *fsm.NodeState, op *pb.WriteOperation, l *raft.Log) interfa
 
 func HandleCreateTopic(f *fsm.NodeState, op *pb.WriteOperation, l *raft.Log) interface{} {
 	res, err := f.CreateTopic(op.GetCreateTopic())
-	if err != nil {
-		log.Error().Err(err)
-		return err
-	}
-	return res
-}
-
-func HandleConsume(f *fsm.NodeState, op *pb.WriteOperation, l *raft.Log) interface{} {
-	res, err := f.Consume(op.GetConsume())
 	if err != nil {
 		log.Error().Err(err)
 		return err

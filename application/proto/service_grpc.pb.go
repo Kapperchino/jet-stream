@@ -26,6 +26,7 @@ type MessageServiceClient interface {
 	CreateConsumer(ctx context.Context, in *CreateConsumerRequest, opts ...grpc.CallOption) (*CreateConsumerResponse, error)
 	Consume(ctx context.Context, in *ConsumeRequest, opts ...grpc.CallOption) (*ConsumeResponse, error)
 	CreateTopic(ctx context.Context, in *CreateTopicRequest, opts ...grpc.CallOption) (*CreateTopicResponse, error)
+	AckConsume(ctx context.Context, in *AckConsumeRequest, opts ...grpc.CallOption) (*AckConsumeResponse, error)
 }
 
 type messageServiceClient struct {
@@ -72,6 +73,15 @@ func (c *messageServiceClient) CreateTopic(ctx context.Context, in *CreateTopicR
 	return out, nil
 }
 
+func (c *messageServiceClient) AckConsume(ctx context.Context, in *AckConsumeRequest, opts ...grpc.CallOption) (*AckConsumeResponse, error) {
+	out := new(AckConsumeResponse)
+	err := c.cc.Invoke(ctx, "/MessageService/AckConsume", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MessageServiceServer is the server API for MessageService service.
 // All implementations must embed UnimplementedMessageServiceServer
 // for forward compatibility
@@ -80,6 +90,7 @@ type MessageServiceServer interface {
 	CreateConsumer(context.Context, *CreateConsumerRequest) (*CreateConsumerResponse, error)
 	Consume(context.Context, *ConsumeRequest) (*ConsumeResponse, error)
 	CreateTopic(context.Context, *CreateTopicRequest) (*CreateTopicResponse, error)
+	AckConsume(context.Context, *AckConsumeRequest) (*AckConsumeResponse, error)
 	mustEmbedUnimplementedMessageServiceServer()
 }
 
@@ -98,6 +109,9 @@ func (UnimplementedMessageServiceServer) Consume(context.Context, *ConsumeReques
 }
 func (UnimplementedMessageServiceServer) CreateTopic(context.Context, *CreateTopicRequest) (*CreateTopicResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateTopic not implemented")
+}
+func (UnimplementedMessageServiceServer) AckConsume(context.Context, *AckConsumeRequest) (*AckConsumeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AckConsume not implemented")
 }
 func (UnimplementedMessageServiceServer) mustEmbedUnimplementedMessageServiceServer() {}
 
@@ -184,6 +198,24 @@ func _MessageService_CreateTopic_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessageService_AckConsume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AckConsumeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).AckConsume(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/MessageService/AckConsume",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).AckConsume(ctx, req.(*AckConsumeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MessageService_ServiceDesc is the grpc.ServiceDesc for MessageService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -206,6 +238,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateTopic",
 			Handler:    _MessageService_CreateTopic_Handler,
+		},
+		{
+			MethodName: "AckConsume",
+			Handler:    _MessageService_AckConsume_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

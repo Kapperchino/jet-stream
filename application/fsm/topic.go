@@ -17,7 +17,7 @@ type Topic struct {
 }
 
 type Partition struct {
-	Num    int64
+	Num    uint64
 	Topic  string
 	Offset uint64
 }
@@ -32,7 +32,7 @@ func (f *NodeState) CreateTopic(req *pb.CreateTopic) (interface{}, error) {
 		Name:       req.GetTopic(),
 		Partitions: []Partition{},
 	}
-	for i := int64(0); i < req.GetPartitions(); i++ {
+	for i := uint64(0); i < req.GetPartitions(); i++ {
 		newTopic.Partitions = append(newTopic.Partitions, f.CreatePartition(i, req.GetTopic()))
 	}
 	//seralize Topic and put in db
@@ -91,7 +91,7 @@ func (f *NodeState) getTopic(topicName string) (*Topic, error) {
 	return curTopic, nil
 }
 
-func (f *NodeState) CreatePartition(partitionNum int64, topic string) Partition {
+func (f *NodeState) CreatePartition(partitionNum uint64, topic string) Partition {
 	res := Partition{
 		Num:    partitionNum,
 		Topic:  topic,

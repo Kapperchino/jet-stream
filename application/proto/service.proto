@@ -7,31 +7,40 @@ service MessageService {
   rpc CreateConsumer(CreateConsumerRequest) returns (CreateConsumerResponse) {}
   rpc Consume(ConsumeRequest) returns (ConsumeResponse) {}
   rpc CreateTopic(CreateTopicRequest) returns (CreateTopicResponse) {}
+  rpc AckConsume(AckConsumeRequest) returns (AckConsumeResponse) {}
+}
+
+message AckConsumeRequest {
+  map<uint64, uint64> offsets = 1;
+  uint64 id = 2;
+}
+
+message AckConsumeResponse {
 }
 
 message PublishMessageRequest {
   string topic = 1;
-  int64 partition = 2;
+  uint64 partition = 2;
   repeated KeyVal messages = 3;
 }
 
 message PublishMessageResponse {
   repeated Message messages = 1;
-  int64 lastIndex = 2;
+  uint64 lastIndex = 2;
 }
 
 message ScaleTopicRequest {
   string topic = 1;
-  int64 partitions = 2;
+  uint64 partitions = 2;
 }
 
 message ScaleTopicResponse {
-  int64 lastIndex = 1;
+  uint64 lastIndex = 1;
 }
 
 message CreateTopicRequest {
   string topic = 1;
-  int64 numPartitions = 2;
+  uint64 numPartitions = 2;
 }
 
 message CreateTopicResponse {
@@ -42,26 +51,26 @@ message CreateConsumerRequest {
 }
 
 message CreateConsumerResponse {
-  int64 consumerId = 1;
-  int64 lastIndex = 2;
+  uint64 consumerId = 1;
+  uint64 lastIndex = 2;
 }
 
 message ConsumeRequest {
   string topic = 1;
-  int64 consumerId = 2;
+  uint64 consumerId = 2;
 }
 
 message ConsumeResponse {
   repeated Message messages = 1;
-  int64 lastIndex = 2;
+  uint64 lastIndex = 2;
 }
 
 message Message {
   bytes key = 1;
   bytes payload = 2;
   string topic = 3;
-  int64 partition = 4;
-  int64 offset = 5;
+  uint64 partition = 4;
+  uint64 offset = 5;
   uint64 raftIndex = 6;
 }
 
@@ -72,20 +81,11 @@ message KeyVal {
 
 message Publish {
   string topic = 1;
-  int64 partition = 2;
+  uint64 partition = 2;
   repeated KeyVal messages = 3;
 }
 
 message PublishResult {
-  repeated Message messages = 1;
-}
-
-message Consume {
-  string topic = 1;
-  int64 id = 2;
-}
-
-message ConsumeResult {
   repeated Message messages = 1;
 }
 
@@ -98,7 +98,7 @@ message CreateConsumerResult{
 
 message CreateTopic{
   string topic = 1;
-  int64 partitions = 2;
+  uint64 partitions = 2;
 }
 
 message CreateTopicResult{
@@ -119,10 +119,18 @@ message RemoveMember{
 message RemoveMemberResult{
 }
 
+message Ack{
+  map<uint64, uint64> offsets = 1;
+  uint64 id = 2;
+}
+
+message AckResult{
+}
+
 
 enum Operation {
   PUBLISH = 0;
-  CONSUME = 1;
+  ACK = 1;
   CREATE_CONSUMER = 2;
   CREATE_TOPIC = 3;
   ADD_MEMBER = 4;
@@ -132,7 +140,7 @@ enum Operation {
 message WriteOperation {
   oneof operation {
     Publish publish = 1;
-    Consume consume = 2;
+    Ack ack = 2;
     CreateConsumer createConsumer = 3;
     CreateTopic createTopic = 4;
     AddMember addMember = 5;
@@ -144,7 +152,7 @@ message WriteOperation {
 message WriteResult {
   oneof result {
     PublishResult publishResult = 1;
-    ConsumeResult consumeResult = 2;
+    AckResult ackResult = 2;
     CreateConsumerResult createConsumerResult = 3;
     CreateTopicResult createTopicResult = 4;
     AddMemberResult addMemberResult = 5;

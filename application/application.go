@@ -88,29 +88,7 @@ func (r RpcInterface) CreateConsumer(ctx context.Context, req *pb.CreateConsumer
 }
 
 func ConsumeInternal(r RpcInterface, req *pb.ConsumeRequest) (*pb.ConsumeResponse, error) {
-	input := &pb.WriteOperation{
-		Operation: &pb.WriteOperation_Consume{
-			Consume: &pb.Consume{
-				Topic: req.GetTopic(),
-				Id:    req.GetConsumerId(),
-			},
-		},
-		Code: pb.Operation_CONSUME,
-	}
-	val, _ := util.SerializeMessage(input)
-	res := r.Raft.Apply(val, time.Second)
-	if err := res.Error(); err != nil {
-		return nil, rafterrors.MarkRetriable(err)
-	}
-	err, isErr := res.Response().(error)
-	if isErr {
-		return nil, err
-	}
-	response, isValid := res.Response().(*pb.ConsumeResponse)
-	if !isValid {
-		return nil, errors.New("unknown data type")
-	}
-	return response, nil
+	return r.NodeState.Consume(req)
 }
 
 func (r RpcInterface) Consume(_ context.Context, req *pb.ConsumeRequest) (*pb.ConsumeResponse, error) {
@@ -153,4 +131,38 @@ func (r RpcInterface) CreateTopic(_ context.Context, req *pb.CreateTopicRequest)
 		return nil, err
 	}
 	return res, nil
+}
+
+func (r RpcInterface) AckConsume(_ context.Context, req *pb.AckConsumeRequest) (*pb.AckConsumeResponse, error) {
+	res, err := AckConsumeInternal(r, req)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+func AckConsumeInternal(r RpcInterface, req *pb.AckConsumeRequest) (*pb.AckConsumeResponse, error) {
+	input := &pb.WriteOperation{
+		Operation: &pb.WriteOperation_Ack{
+			Ack: &pb.Ack{
+				Offsets: req.Offsets,
+				Id:      req.Id,
+			},
+		},
+		Code: pb.Operation_ACK,
+	}
+	val, _ := util.SerializeMessage(input)
+	res := r.Raft.Apply(val, time.Second)
+	if err := res.Error(); err != nil {
+		return nil, rafterrors.MarkRetriable(err)
+	}
+	err, isErr := res.Response().(error)
+	if isErr {
+		return nil, err
+	}
+	response, isValid := res.Response().(*pb.AckConsumeResponse)
+	if !isValid {
+		return nil, errors.New("unknown data type")
+	}
+	return response, nil
 }

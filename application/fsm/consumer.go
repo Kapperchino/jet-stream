@@ -21,6 +21,7 @@ type Checkpoint struct {
 	Partition uint64
 }
 
+// CreateConsumer write operation, done in fsm
 func (f *NodeState) CreateConsumer(req *pb.CreateConsumer) (interface{}, error) {
 	topic, err := f.getTopic(req.GetTopic())
 	if err != nil {
@@ -55,7 +56,7 @@ func (f *NodeState) CreateConsumer(req *pb.CreateConsumer) (interface{}, error) 
 			log.Printf("error putting items in bucket, %s", err)
 			return fmt.Errorf("error putting items in bucket, %w", err)
 		}
-		response.ConsumerId = int64(id)
+		response.ConsumerId = id
 		return nil
 	})
 	if err != nil {
@@ -64,7 +65,8 @@ func (f *NodeState) CreateConsumer(req *pb.CreateConsumer) (interface{}, error) 
 	return response, nil
 }
 
-func (f *NodeState) Consume(req *pb.Consume) (interface{}, error) {
+// Consume operation, should be done in replicas and not in fsm
+func (f *NodeState) Consume(req *pb.ConsumeRequest) (*pb.ConsumeResponse, error) {
 	topic, err := f.getTopic(req.GetTopic())
 	if err != nil {
 		return nil, fmt.Errorf("topic does not exist, %w", err)
@@ -74,7 +76,7 @@ func (f *NodeState) Consume(req *pb.Consume) (interface{}, error) {
 		LastIndex: 0,
 	}
 	err = f.MetaStore.View(func(tx *badger.Txn) error {
-		consumer, err := f.getConsumer(uint64(req.GetId()))
+		consumer, err := f.getConsumer(req.GetConsumerId())
 		if err != nil {
 			log.Err(err).Msgf("Error getting consumer")
 			return err
@@ -140,4 +142,32 @@ func (f *NodeState) getConsumer(consumerId uint64) (*Consumer, error) {
 		return nil, fmt.Errorf("error with local store, %s", err)
 	}
 	return consumer, nil
+}
+
+func (f *NodeState) Ack(request *pb.Ack) (interface{}, error) {
+	consumer, err := f.getConsumer(request.Id)
+	if err != nil {
+		return nil, err
+	}
+	for partition, offset := range request.Offsets {
+		consumer.Checkpoints[partition].Offset = offset
+	}
+
+	err = f.MetaStore.Update(func(tx *badger.Txn) error {
+		var buf bytes.Buffer
+		enc := gob.NewEncoder(&buf)
+		err = enc.Encode(consumer)
+		if err != nil {
+			log.Printf("error encoding Topic, %s", err)
+			return fmt.Errorf("error encoding Topic, %w", err)
+		}
+		consumerId := []byte("Consumer-" + strconv.FormatUint(consumer.Id, 10))
+		err = tx.Set(consumerId, buf.Bytes())
+		if err != nil {
+			log.Printf("error putting items in bucket, %s", err)
+			return fmt.Errorf("error putting items in bucket, %w", err)
+		}
+		return nil
+	})
+	return &pb.AckConsumeResponse{}, nil
 }
