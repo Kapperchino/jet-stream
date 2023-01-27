@@ -8,7 +8,6 @@ use (
 	./config
 	./factory
 	./leader-rpc
-	./multi-resolver
 	./raftadmin
 	./transport
 	./util
