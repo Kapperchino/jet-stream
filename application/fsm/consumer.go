@@ -89,9 +89,9 @@ func (f *NodeState) Consume(req *pb.ConsumeRequest) (*pb.ConsumeResponse, error)
 			opts.PrefetchSize = 100
 			it := tx.NewIterator(opts)
 			defer it.Close()
-			key := topic.Name + "-" + strconv.FormatInt(int64(i), 10)
-			it.Seek([]byte(key + "-" + strconv.FormatUint(startingOffset+1, 16)))
-			for it.ValidForPrefix([]byte(key)); it.Valid(); it.Next() {
+			key := makePrefix(req.Topic, uint64(i))
+			it.Seek(makeKey(req.Topic, uint64(i), startingOffset+1))
+			for it.ValidForPrefix(key); it.Valid(); it.Next() {
 				//now we need to seek until the message is found
 				item := it.Item()
 				err := item.Value(func(v []byte) error {

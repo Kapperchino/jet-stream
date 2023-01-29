@@ -26,8 +26,8 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 		return nil, nil
 	}
 	newOffset := uint64(0)
-	key := req.Topic + "-" + strconv.FormatUint(req.Partition, 10)
-	seq, err := f.MessageStore.GetSequence([]byte(key), 1000)
+	key := makePrefix(req.Topic, req.Partition)
+	seq, err := f.MessageStore.GetSequence(key, 1000)
 	defer seq.Release()
 	for _, m := range req.GetMessages() {
 		err = f.MetaStore.Update(func(tx *badger.Txn) error {
@@ -48,8 +48,8 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 				log.Err(err)
 				return err
 			}
-			msgKey := key + "-" + strconv.FormatUint(offset, 16)
-			err = tx.Set([]byte(msgKey), byteProto)
+			msgKey := makeKey(req.Topic, req.Partition, offset)
+			err = tx.Set(msgKey, byteProto)
 			if err != nil {
 				return err
 			}

@@ -88,7 +88,6 @@ func (suite *FsmTest) Test_Consume_No_Topic() {
 	err.Error()
 }
 
-// should have the same messages because of no ack, two consume calls should result in the same offsets
 func (suite *FsmTest) Test_Consume_Ack() {
 	const TOPIC = "Test_Consume_No_Ack"
 	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
@@ -102,7 +101,7 @@ func (suite *FsmTest) Test_Consume_Ack() {
 		Key: []byte("joe"),
 		Val: token,
 	})
-	for x := 0; x < 10; x++ {
+	for x := 0; x < 25; x++ {
 		res, err := publishMessages(suite.client, TOPIC, arr, 0)
 		assert.Nil(suite.T(), err)
 		assert.NotNil(suite.T(), res)
@@ -111,16 +110,17 @@ func (suite *FsmTest) Test_Consume_Ack() {
 	assert.Nil(suite.T(), err)
 	msgs, err := consumeMessages(suite.client, TOPIC, res.ConsumerId)
 	assert.Nil(suite.T(), err)
-	for x := uint64(1); x <= 10; x++ {
+	for x := uint64(1); x <= 25; x++ {
 		assert.Equal(suite.T(), x, msgs.Messages[x-1].Offset)
 	}
-	_, err = ack(suite.client, map[uint64]uint64{0: 10}, res.ConsumerId)
+	_, err = ack(suite.client, map[uint64]uint64{0: 25}, res.ConsumerId)
 	assert.Nil(suite.T(), err)
 	msgs, err = consumeMessages(suite.client, TOPIC, res.ConsumerId)
 	assert.Nil(suite.T(), err)
 	assert.Equal(suite.T(), 0, len(msgs.Messages))
 }
 
+// should have the same messages because of no ack, two consume calls should result in the same offsets
 func (suite *FsmTest) Test_Consume_No_Ack() {
 	const TOPIC = "Test_Consume_Ack"
 	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
