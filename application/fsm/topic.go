@@ -95,7 +95,7 @@ func (f *NodeState) CreatePartition(partitionNum uint64, topic string) Partition
 	res := Partition{
 		Num:    partitionNum,
 		Topic:  topic,
-		Offset: 1,
+		Offset: 0,
 	}
 	return res
 }

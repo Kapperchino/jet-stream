@@ -60,7 +60,7 @@ func (suite *FsmTest) Test_Publish() {
 	for x := 0; x < 10; x++ {
 		res, err := publishMessages(suite.client, "Test_Publish", arr, 0)
 		for _, message := range res.GetMessages() {
-			log.Info().Bytes("key", message.Key).Int64("offset", message.Offset).Msgf("message")
+			log.Info().Bytes("key", message.Key).Uint64("offset", message.Offset).Msgf("message")
 		}
 		assert.Nil(suite.T(), err)
 		assert.NotNil(suite.T(), res)
@@ -88,9 +88,11 @@ func (suite *FsmTest) Test_Consume_No_Topic() {
 	err.Error()
 }
 
-func (suite *FsmTest) Test_Consume() {
+// should have the same messages because of no ack, two consume calls should result in the same offsets
+func (suite *FsmTest) Test_Consume_Ack() {
+	const TOPIC = "Test_Consume_No_Ack"
 	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
-		Topic:         "Test_Consume",
+		Topic:         TOPIC,
 		NumPartitions: 1,
 	})
 	var arr []*pb.KeyVal
@@ -101,15 +103,47 @@ func (suite *FsmTest) Test_Consume() {
 		Val: token,
 	})
 	for x := 0; x < 10; x++ {
-		res, err := publishMessages(suite.client, "Test_Consume", arr, 0)
+		res, err := publishMessages(suite.client, TOPIC, arr, 0)
 		assert.Nil(suite.T(), err)
 		assert.NotNil(suite.T(), res)
 	}
-	res, err := createConsumer(suite.client, "Test_Consume")
-	if assert.Nil(suite.T(), err) {
-		res1, err := consumeMessages(suite.client, "Test_Consume", res.ConsumerId)
+	res, err := createConsumer(suite.client, TOPIC)
+	assert.Nil(suite.T(), err)
+	msgs, err := consumeMessages(suite.client, TOPIC, res.ConsumerId)
+	assert.Nil(suite.T(), err)
+	for x := uint64(1); x <= 10; x++ {
+		assert.Equal(suite.T(), x, msgs.Messages[x-1].Offset)
+	}
+	_, err = ack(suite.client, map[uint64]uint64{0: 10}, res.ConsumerId)
+	assert.Nil(suite.T(), err)
+	msgs, err = consumeMessages(suite.client, TOPIC, res.ConsumerId)
+	assert.Nil(suite.T(), err)
+	assert.Equal(suite.T(), 0, len(msgs.Messages))
+}
+
+func (suite *FsmTest) Test_Consume_No_Ack() {
+	const TOPIC = "Test_Consume_Ack"
+	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
+		Topic:         TOPIC,
+		NumPartitions: 1,
+	})
+	var arr []*pb.KeyVal
+	token := make([]byte, 3*1024*1024)
+	rand.Read(token)
+	arr = append(arr, &pb.KeyVal{
+		Key: []byte("joe"),
+		Val: token,
+	})
+	for x := 0; x < 10; x++ {
+		res, err := publishMessages(suite.client, TOPIC, arr, 0)
 		assert.Nil(suite.T(), err)
-		assert.Equal(suite.T(), 10, len(res1.GetMessages()))
+		assert.NotNil(suite.T(), res)
+	}
+	res, err := createConsumer(suite.client, TOPIC)
+	assert.Nil(suite.T(), err)
+	msgs, err := consumeMessages(suite.client, TOPIC, res.ConsumerId)
+	for x := uint64(1); x <= 10; x++ {
+		assert.Equal(suite.T(), x, msgs.Messages[x-1].Offset)
 	}
 }
 
@@ -124,7 +158,7 @@ func createConsumer(client pb.MessageServiceClient, topic string) (*pb.CreateCon
 	return res, err
 }
 
-func consumeMessages(client pb.MessageServiceClient, topic string, consumerId int64) (*pb.ConsumeResponse, error) {
+func consumeMessages(client pb.MessageServiceClient, topic string, consumerId uint64) (*pb.ConsumeResponse, error) {
 	res, err := client.Consume(context.Background(), &pb.ConsumeRequest{
 		Topic:      topic,
 		ConsumerId: consumerId,
@@ -132,11 +166,19 @@ func consumeMessages(client pb.MessageServiceClient, topic string, consumerId in
 	return res, err
 }
 
-func publishMessages(client pb.MessageServiceClient, topic string, messages []*pb.KeyVal, partition int64) (*pb.PublishMessageResponse, error) {
+func publishMessages(client pb.MessageServiceClient, topic string, messages []*pb.KeyVal, partition uint64) (*pb.PublishMessageResponse, error) {
 	res, err := client.PublishMessages(context.Background(), &pb.PublishMessageRequest{
 		Topic:     topic,
 		Partition: partition,
 		Messages:  messages,
+	})
+	return res, err
+}
+
+func ack(client pb.MessageServiceClient, offsets map[uint64]uint64, consumerId uint64) (*pb.AckConsumeResponse, error) {
+	res, err := client.AckConsume(context.Background(), &pb.AckConsumeRequest{
+		Offsets: offsets,
+		Id:      consumerId,
 	})
 	return res, err
 }

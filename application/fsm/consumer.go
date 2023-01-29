@@ -90,7 +90,7 @@ func (f *NodeState) Consume(req *pb.ConsumeRequest) (*pb.ConsumeResponse, error)
 			it := tx.NewIterator(opts)
 			defer it.Close()
 			key := topic.Name + "-" + strconv.FormatInt(int64(i), 10)
-			it.Seek([]byte(key + "-" + strconv.FormatUint(startingOffset, 10)))
+			it.Seek([]byte(key + "-" + strconv.FormatUint(startingOffset+1, 16)))
 			for it.ValidForPrefix([]byte(key)); it.Valid(); it.Next() {
 				//now we need to seek until the message is found
 				item := it.Item()

@@ -73,13 +73,16 @@ func PublishMessage(messages []*proto.Message) (*proto.PublishMessageResponse, e
 	return nil, nil
 }
 
-func CreateTopic(name string, partitions int) {
+func CreateTopic(name string, partitions int) (*proto.CreateTopicResponse, error) {
+	return nil, nil
 }
 
-func CreateConsumer(id uint64) {
+func CreateConsumer(id uint64) (*proto.CreateConsumerResponse, error) {
+	return nil, nil
 }
 
-func ConsumeMessage() {
+func ConsumeMessage(topic string, id uint64) (*proto.ConsumeRequest, error) {
+	return nil, nil
 }
 
 func newClusterClient(conn *grpc.ClientConn) clusterPb.ClusterMetaServiceClient {
