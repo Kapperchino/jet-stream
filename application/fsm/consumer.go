@@ -34,10 +34,10 @@ func (f *NodeState) CreateConsumer(req *pb.CreateConsumer) (interface{}, error) 
 		id, _ := seq.Next()
 		list := make([]Checkpoint, len(topic.Partitions))
 		for i := 0; i < len(topic.Partitions); i++ {
-			list = append(list, Checkpoint{
-				Offset:    1,
+			list[i] = Checkpoint{
+				Offset:    0,
 				Partition: uint64(i),
-			})
+			}
 		}
 		consumer := Consumer{
 			Id:          id,
@@ -81,17 +81,17 @@ func (f *NodeState) Consume(req *pb.ConsumeRequest) (*pb.ConsumeResponse, error)
 			log.Err(err).Msgf("Error getting consumer")
 			return err
 		}
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchSize = 100
+		it := tx.NewIterator(opts)
+
+		defer it.Close()
+
 		for i, _ := range topic.Partitions {
-			curCheckpoint := consumer.Checkpoints[i]
 			var buf []*pb.Message
-			startingOffset := curCheckpoint.Offset
-			opts := badger.DefaultIteratorOptions
-			opts.PrefetchSize = 100
-			it := tx.NewIterator(opts)
-			defer it.Close()
-			key := makePrefix(req.Topic, uint64(i))
-			it.Seek(makeKey(req.Topic, uint64(i), startingOffset+1))
-			for it.ValidForPrefix(key); it.Valid(); it.Next() {
+			prefix := makePrefix(req.Topic, uint64(i))
+			key := makeKey(req.GetTopic(), uint64(i), consumer.Checkpoints[i].Offset+1)
+			for it.Seek(key); it.ValidForPrefix(prefix); it.Next() {
 				//now we need to seek until the message is found
 				item := it.Item()
 				err := item.Value(func(v []byte) error {

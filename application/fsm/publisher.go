@@ -29,8 +29,8 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 	key := makePrefix(req.Topic, req.Partition)
 	seq, err := f.MessageStore.GetSequence(key, 1000)
 	defer seq.Release()
-	for _, m := range req.GetMessages() {
-		err = f.MetaStore.Update(func(tx *badger.Txn) error {
+	err = f.MetaStore.Update(func(tx *badger.Txn) error {
+		for _, m := range req.GetMessages() {
 			offset, _ := seq.Next()
 			offset++
 			newOffset = offset
@@ -55,13 +55,15 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 			}
 			res = append(res, newMsg)
 			return nil
-		})
-		if err != nil {
-			log.Error().Msg("Error Writing to topic")
-			log.Err(err)
-			return nil, err
 		}
+		return nil
+	})
+	if err != nil {
+		log.Error().Msg("Error Writing to topic")
+		log.Err(err)
+		return nil, err
 	}
+
 	curTopic.Partitions[req.GetPartition()].Offset = newOffset
 	return res, nil
 }

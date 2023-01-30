@@ -67,6 +67,30 @@ func (suite *FsmTest) Test_Publish() {
 	}
 }
 
+func (suite *FsmTest) Test_Publish_Two_Partitions() {
+	log.Printf("Creating topic")
+	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
+		Topic:         "Test_Publish_Two_Partitions",
+		NumPartitions: 2,
+	})
+	assert.Nil(suite.T(), err)
+	var arr []*pb.KeyVal
+	token := make([]byte, 10*1024*1024)
+	rand.Read(token)
+	arr = append(arr, &pb.KeyVal{
+		Key: []byte("joe"),
+		Val: token,
+	})
+	for x := 0; x < 10; x++ {
+		res, err := publishMessages(suite.client, "Test_Publish_Two_Partitions", arr, 0)
+		for _, message := range res.GetMessages() {
+			log.Info().Bytes("key", message.Key).Uint64("offset", message.Offset).Msgf("message")
+		}
+		assert.Nil(suite.T(), err)
+		assert.NotNil(suite.T(), res)
+	}
+}
+
 func (suite *FsmTest) Test_Publish_No_Topic() {
 	var arr []*pb.KeyVal
 	token := make([]byte, 3*1024*1024)
@@ -89,7 +113,7 @@ func (suite *FsmTest) Test_Consume_No_Topic() {
 }
 
 func (suite *FsmTest) Test_Consume_Ack() {
-	const TOPIC = "Test_Consume_No_Ack"
+	const TOPIC = "Test_Consume_Ack"
 	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
 		Topic:         TOPIC,
 		NumPartitions: 1,
@@ -122,7 +146,7 @@ func (suite *FsmTest) Test_Consume_Ack() {
 
 // should have the same messages because of no ack, two consume calls should result in the same offsets
 func (suite *FsmTest) Test_Consume_No_Ack() {
-	const TOPIC = "Test_Consume_Ack"
+	const TOPIC = "Test_Consume_No_Ack"
 	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
 		Topic:         TOPIC,
 		NumPartitions: 1,
@@ -145,6 +169,46 @@ func (suite *FsmTest) Test_Consume_No_Ack() {
 	for x := uint64(1); x <= 10; x++ {
 		assert.Equal(suite.T(), x, msgs.Messages[x-1].Offset)
 	}
+}
+
+func (suite *FsmTest) Test_Consume_Ack_Two_Partitions() {
+	const TOPIC = "Test_Consume_Ack_Two_Partitions"
+	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
+		Topic:         TOPIC,
+		NumPartitions: 2,
+	})
+	var arr []*pb.KeyVal
+	token := make([]byte, 3*1024*1024)
+	rand.Read(token)
+	arr = append(arr, &pb.KeyVal{
+		Key: []byte("joe"),
+		Val: token,
+	})
+	for x := 0; x < 25; x++ {
+		res, err := publishMessages(suite.client, TOPIC, arr, 0)
+		assert.Nil(suite.T(), err)
+		assert.NotNil(suite.T(), res)
+		res, err = publishMessages(suite.client, TOPIC, arr, 1)
+		assert.Nil(suite.T(), err)
+		assert.NotNil(suite.T(), res)
+	}
+	res, err := createConsumer(suite.client, TOPIC)
+	assert.Nil(suite.T(), err)
+	msgs, err := consumeMessages(suite.client, TOPIC, res.ConsumerId)
+	assert.Nil(suite.T(), err)
+	for x := uint64(1); x <= 25; x++ {
+		assert.Equal(suite.T(), uint64(0), msgs.Messages[x-1].Partition)
+		assert.Equal(suite.T(), x, msgs.Messages[x-1].Offset)
+	}
+	for x := uint64(26); x <= 50; x++ {
+		assert.Equal(suite.T(), uint64(1), msgs.Messages[x-1].Partition)
+		assert.Equal(suite.T(), x-25, msgs.Messages[x-1].Offset)
+	}
+	_, err = ack(suite.client, map[uint64]uint64{0: 25, 1: 25}, res.ConsumerId)
+	assert.Nil(suite.T(), err)
+	msgs, err = consumeMessages(suite.client, TOPIC, res.ConsumerId)
+	assert.Nil(suite.T(), err)
+	assert.Equal(suite.T(), 0, len(msgs.Messages))
 }
 
 func TestFSMTestSuite(t *testing.T) {
