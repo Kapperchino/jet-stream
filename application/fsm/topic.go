@@ -1,26 +1,12 @@
 package fsm
 
 import (
-	"bytes"
-	"encoding/gob"
 	"fmt"
 	pb "github.com/Kapperchino/jet-application/proto"
+	"github.com/Kapperchino/jet/util"
 	"github.com/dgraph-io/badger/v3"
-	"github.com/spaolacci/murmur3"
-	"log"
-	"strconv"
+	"github.com/rs/zerolog/log"
 )
-
-type Topic struct {
-	Name       string
-	Partitions map[uint64]Partition
-}
-
-type Partition struct {
-	Num    uint64
-	Topic  string
-	Offset uint64
-}
 
 func (f *NodeState) CreateTopic(req *pb.CreateTopic) (interface{}, error) {
 	curTopic, err := f.getTopic(req.GetTopic())
@@ -28,22 +14,20 @@ func (f *NodeState) CreateTopic(req *pb.CreateTopic) (interface{}, error) {
 	if err == nil && curTopic != nil {
 		return new(pb.CreateTopicResponse), nil
 	}
-	newTopic := Topic{
+	newTopic := pb.Topic{
 		Name:       req.GetTopic(),
-		Partitions: map[uint64]Partition{},
+		Partitions: map[uint64]*pb.Partition{},
 	}
 	for i := uint64(0); i < req.GetPartitions(); i++ {
 		newTopic.Partitions[i] = f.CreatePartition(i, req.GetTopic())
 	}
 	//seralize Topic and put in db
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	err = enc.Encode(newTopic)
+	res, err := util.SerializeMessage(&newTopic)
 	if err != nil {
 		return nil, fmt.Errorf("error encoding Topic")
 	}
 	err = f.MetaStore.Update(func(tx *badger.Txn) error {
-		err = tx.Set([]byte("Topic-"+newTopic.Name), buf.Bytes())
+		err = tx.Set([]byte("Topic-"+newTopic.Name), res)
 		if err != nil {
 			return err
 		}
@@ -56,46 +40,70 @@ func (f *NodeState) CreateTopic(req *pb.CreateTopic) (interface{}, error) {
 	return new(pb.CreateTopicResponse), nil
 }
 
-func (f *NodeState) getTopic(topicName string) (*Topic, error) {
-	var curTopic *Topic
+func (f *NodeState) getTopic(topicName string) (*pb.Topic, error) {
+	var curTopic pb.Topic
 	err := f.MetaStore.View(func(tx *badger.Txn) error {
 		v, err := tx.Get([]byte("Topic-" + topicName))
 		if err != nil {
-			return nil
+			return err
 		}
 		var valBytes []byte
 		v.Value(func(val []byte) error {
 			valBytes = val
 			return nil
 		})
-		buf := bytes.NewBuffer(valBytes)
-		dec := gob.NewDecoder(buf)
-		if err := dec.Decode(&curTopic); err != nil {
-			log.Fatal(err)
+		err = util.DeserializeMessage(valBytes, &curTopic)
+		if err != nil {
+			log.Err(err).Msgf("error deserializing topic")
 			return err
-		}
-		hasher := murmur3.New64()
-		var partitionHashed []string
-		for i := 0; i < len(curTopic.Partitions); i++ {
-			_, _ = hasher.Write(make([]byte, i))
-			partitionHashed = append(partitionHashed, strconv.FormatUint(hasher.Sum64(), 2))
-			hasher.Reset()
 		}
 		return nil
 	})
-	if curTopic == nil {
+	if &curTopic == nil {
 		return nil, fmt.Errorf("topic does not exist, %w", err)
 	} else if err != nil {
 		return nil, fmt.Errorf("error with local store, %s", err)
 	}
-	return curTopic, nil
+	return &curTopic, nil
 }
 
-func (f *NodeState) CreatePartition(partitionNum uint64, topic string) Partition {
-	res := Partition{
+func (f *NodeState) getTopics() (map[string]*pb.Topic, error) {
+	topics := map[string]*pb.Topic{}
+	err := f.MetaStore.View(func(tx *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchSize = 100
+		it := tx.NewIterator(opts)
+		defer it.Close()
+		prefix := []byte("Topic-")
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			//now we need to seek until the message is found
+			item := it.Item()
+			err := item.Value(func(v []byte) error {
+				var topic pb.Topic
+				err := util.DeserializeMessage(v, &topic)
+				if err != nil {
+					return err
+				}
+				topics[topic.Name] = &topic
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error with local store, %s", err)
+	}
+	return topics, nil
+}
+
+func (f *NodeState) CreatePartition(partitionNum uint64, topic string) *pb.Partition {
+	res := pb.Partition{
 		Num:    partitionNum,
 		Topic:  topic,
 		Offset: 0,
 	}
-	return res
+	return &res
 }

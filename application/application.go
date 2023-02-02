@@ -66,6 +66,30 @@ func (r RpcInterface) Consume(_ context.Context, req *pb.ConsumeRequest) (*pb.Co
 	return res, nil
 }
 
+func GetConsumerGroupsInternal(r RpcInterface, req *pb.GetConsumerGroupsRequest) (*pb.GetConsumerGroupsResponse, error) {
+	return r.NodeState.GetConsumerGroups(req.Topic)
+}
+
+func (r RpcInterface) GetConsumerGroups(_ context.Context, req *pb.GetConsumerGroupsRequest) (*pb.GetConsumerGroupsResponse, error) {
+	res, err := GetConsumerGroupsInternal(r, req)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+func GetMetaInternal(r RpcInterface, req *pb.GetMetaRequest) (*pb.GetMetaResponse, error) {
+	return r.NodeState.GetMeta()
+}
+
+func (r RpcInterface) GetMeta(_ context.Context, req *pb.GetMetaRequest) (*pb.GetMetaResponse, error) {
+	res, err := GetMetaInternal(r, req)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
 func CreateTopicInternal(r RpcInterface, req *pb.CreateTopicRequest) (*pb.CreateTopicResponse, error) {
 	input := &pb.WriteOperation{
 		Operation: &pb.WriteOperation_CreateTopic{
@@ -114,6 +138,7 @@ func AckConsumeInternal(r RpcInterface, req *pb.AckConsumeRequest) (*pb.AckConsu
 			Ack: &pb.Ack{
 				Offsets: req.Offsets,
 				GroupId: req.GroupId,
+				Topic:   req.Topic,
 			},
 		},
 		Code: pb.Operation_ACK,

@@ -25,6 +25,7 @@ type MessageServiceClient interface {
 	PublishMessages(ctx context.Context, in *PublishMessageRequest, opts ...grpc.CallOption) (*PublishMessageResponse, error)
 	CreateConsumer(ctx context.Context, in *CreateConsumerRequest, opts ...grpc.CallOption) (*CreateConsumerResponse, error)
 	CreateConsumerGroup(ctx context.Context, in *CreateConsumerGroupRequest, opts ...grpc.CallOption) (*CreateConsumerGroupResponse, error)
+	GetConsumerGroups(ctx context.Context, in *GetConsumerGroupsRequest, opts ...grpc.CallOption) (*GetConsumerGroupsResponse, error)
 	Consume(ctx context.Context, in *ConsumeRequest, opts ...grpc.CallOption) (*ConsumeResponse, error)
 	CreateTopic(ctx context.Context, in *CreateTopicRequest, opts ...grpc.CallOption) (*CreateTopicResponse, error)
 	AckConsume(ctx context.Context, in *AckConsumeRequest, opts ...grpc.CallOption) (*AckConsumeResponse, error)
@@ -60,6 +61,15 @@ func (c *messageServiceClient) CreateConsumer(ctx context.Context, in *CreateCon
 func (c *messageServiceClient) CreateConsumerGroup(ctx context.Context, in *CreateConsumerGroupRequest, opts ...grpc.CallOption) (*CreateConsumerGroupResponse, error) {
 	out := new(CreateConsumerGroupResponse)
 	err := c.cc.Invoke(ctx, "/MessageService/CreateConsumerGroup", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) GetConsumerGroups(ctx context.Context, in *GetConsumerGroupsRequest, opts ...grpc.CallOption) (*GetConsumerGroupsResponse, error) {
+	out := new(GetConsumerGroupsResponse)
+	err := c.cc.Invoke(ctx, "/MessageService/GetConsumerGroups", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -109,6 +119,7 @@ type MessageServiceServer interface {
 	PublishMessages(context.Context, *PublishMessageRequest) (*PublishMessageResponse, error)
 	CreateConsumer(context.Context, *CreateConsumerRequest) (*CreateConsumerResponse, error)
 	CreateConsumerGroup(context.Context, *CreateConsumerGroupRequest) (*CreateConsumerGroupResponse, error)
+	GetConsumerGroups(context.Context, *GetConsumerGroupsRequest) (*GetConsumerGroupsResponse, error)
 	Consume(context.Context, *ConsumeRequest) (*ConsumeResponse, error)
 	CreateTopic(context.Context, *CreateTopicRequest) (*CreateTopicResponse, error)
 	AckConsume(context.Context, *AckConsumeRequest) (*AckConsumeResponse, error)
@@ -128,6 +139,9 @@ func (UnimplementedMessageServiceServer) CreateConsumer(context.Context, *Create
 }
 func (UnimplementedMessageServiceServer) CreateConsumerGroup(context.Context, *CreateConsumerGroupRequest) (*CreateConsumerGroupResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateConsumerGroup not implemented")
+}
+func (UnimplementedMessageServiceServer) GetConsumerGroups(context.Context, *GetConsumerGroupsRequest) (*GetConsumerGroupsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetConsumerGroups not implemented")
 }
 func (UnimplementedMessageServiceServer) Consume(context.Context, *ConsumeRequest) (*ConsumeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Consume not implemented")
@@ -204,6 +218,24 @@ func _MessageService_CreateConsumerGroup_Handler(srv interface{}, ctx context.Co
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MessageServiceServer).CreateConsumerGroup(ctx, req.(*CreateConsumerGroupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_GetConsumerGroups_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetConsumerGroupsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).GetConsumerGroups(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/MessageService/GetConsumerGroups",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).GetConsumerGroups(ctx, req.(*GetConsumerGroupsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -298,6 +330,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateConsumerGroup",
 			Handler:    _MessageService_CreateConsumerGroup_Handler,
+		},
+		{
+			MethodName: "GetConsumerGroups",
+			Handler:    _MessageService_GetConsumerGroups_Handler,
 		},
 		{
 			MethodName: "Consume",

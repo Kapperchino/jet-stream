@@ -137,7 +137,7 @@ func (suite *FsmTest) Test_Consume_Ack() {
 	for x := uint64(1); x <= 25; x++ {
 		assert.Equal(suite.T(), x, msgs.Messages[x-1].Offset)
 	}
-	_, err = ack(suite.client, map[uint64]uint64{0: 25}, res.Id)
+	_, err = ack(suite.client, map[uint64]uint64{0: 25}, res.Id, TOPIC)
 	assert.Nil(suite.T(), err)
 	msgs, err = consumeMessages(suite.client, TOPIC, res.Id)
 	assert.Nil(suite.T(), err)
@@ -208,15 +208,58 @@ func (suite *FsmTest) Test_Consume_Ack_Two_Partitions() {
 	}
 	assert.Equal(suite.T(), 25, partCount[0])
 	assert.Equal(suite.T(), 25, partCount[1])
-	_, err = ack(suite.client, map[uint64]uint64{0: 25, 1: 25}, res.Id)
+	_, err = ack(suite.client, map[uint64]uint64{0: 25, 1: 25}, res.Id, TOPIC)
 	assert.Nil(suite.T(), err)
 	msgs, err = consumeMessages(suite.client, TOPIC, res.Id)
 	assert.Nil(suite.T(), err)
 	assert.Equal(suite.T(), 0, len(msgs.Messages))
 }
 
+func (suite *FsmTest) Test_GetConsumerGroups() {
+	const TOPIC = "Test_GetConsumerGroups"
+	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
+		Topic:         TOPIC,
+		NumPartitions: 1,
+	})
+	assert.Nil(suite.T(), err)
+	var arr []*pb.CreateConsumerGroupResponse
+	for i := 0; i < 5; i++ {
+		res, err := createConsumerGroup(suite.client, TOPIC)
+		assert.Nil(suite.T(), err)
+		arr = append(arr, res)
+	}
+	assert.Equal(suite.T(), len(arr), 5)
+}
+
+func (suite *FsmTest) Test_GetMeta() {
+	const TOPIC = "Test_GetMeta"
+	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
+		Topic:         TOPIC,
+		NumPartitions: 1,
+	})
+	assert.Nil(suite.T(), err)
+	var arr []*pb.CreateConsumerGroupResponse
+	for i := 0; i < 5; i++ {
+		res, err := createConsumerGroup(suite.client, TOPIC)
+		assert.Nil(suite.T(), err)
+		arr = append(arr, res)
+	}
+	assert.Equal(suite.T(), len(arr), 5)
+	meta, err := getMeta(suite.client)
+	assert.Nil(suite.T(), err)
+	assert.Equal(suite.T(), len(meta.ConsumerGroups), 5)
+	assert.Equal(suite.T(), len(meta.Topics), 1)
+	assert.Equal(suite.T(), meta.Topics[TOPIC].Name, TOPIC)
+	assert.Equal(suite.T(), len(meta.Topics[TOPIC].Partitions), 1)
+}
+
 func TestFSMTestSuite(t *testing.T) {
 	suite.Run(t, new(FsmTest))
+}
+
+func getMeta(client pb.MessageServiceClient) (*pb.GetMetaResponse, error) {
+	res, err := client.GetMeta(context.Background(), &pb.GetMetaRequest{})
+	return res, err
 }
 
 func createConsumerGroup(client pb.MessageServiceClient, topic string) (*pb.CreateConsumerGroupResponse, error) {
@@ -243,10 +286,11 @@ func publishMessages(client pb.MessageServiceClient, topic string, messages []*p
 	return res, err
 }
 
-func ack(client pb.MessageServiceClient, offsets map[uint64]uint64, groupId string) (*pb.AckConsumeResponse, error) {
+func ack(client pb.MessageServiceClient, offsets map[uint64]uint64, groupId string, topic string) (*pb.AckConsumeResponse, error) {
 	res, err := client.AckConsume(context.Background(), &pb.AckConsumeRequest{
 		Offsets: offsets,
 		GroupId: groupId,
+		Topic:   topic,
 	})
 	return res, err
 }

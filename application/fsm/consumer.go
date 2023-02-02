@@ -36,7 +36,7 @@ func (f *NodeState) CreateConsumerGroup(req *pb.CreateConsumerGroup) (interface{
 			log.Printf("error encoding consumer group, %s", err)
 			return fmt.Errorf("error encoding Topic, %w", err)
 		}
-		err = tx.Set([]byte("ConsumerGroup-"+group.Id), buf)
+		err = tx.Set([]byte("ConsumerGroup-"+topic.Name+"-"+group.Id), buf)
 		if err != nil {
 			log.Printf("error putting items in bucket, %s", err)
 			return fmt.Errorf("error putting items in bucket, %w", err)
@@ -58,7 +58,7 @@ func (f *NodeState) Consume(req *pb.ConsumeRequest) (*pb.ConsumeResponse, error)
 		LastIndex: 0,
 	}
 	err := f.MessageStore.View(func(tx *badger.Txn) error {
-		group, err := f.getConsumerGroup(req.GetGroupId())
+		group, err := f.getConsumerGroup(req.GetGroupId(), req.Topic)
 		if err != nil {
 			log.Err(err).Msgf("Error getting consumer group")
 			return err
@@ -99,10 +99,72 @@ func (f *NodeState) Consume(req *pb.ConsumeRequest) (*pb.ConsumeResponse, error)
 	return &res, nil
 }
 
-func (f *NodeState) getConsumerGroup(id string) (*pb.ConsumerGroup, error) {
+func (f *NodeState) GetConsumerGroups(topic string) (*pb.GetConsumerGroupsResponse, error) {
+	groups := map[string]*pb.ConsumerGroup{}
+	err := f.MetaStore.View(func(tx *badger.Txn) error {
+		prefix := []byte("ConsumerGroup-" + topic)
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchSize = 100
+		it := tx.NewIterator(opts)
+		defer it.Close()
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			item := it.Item()
+			err := item.Value(func(v []byte) error {
+				var group pb.ConsumerGroup
+				err := util.DeserializeMessage(v, &group)
+				if err != nil {
+					return err
+				}
+				groups[group.GetId()] = &group
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error with local store, %s", err)
+	}
+	return &pb.GetConsumerGroupsResponse{Groups: groups}, nil
+}
+
+func (f *NodeState) getAllConsumerGroups() (map[string]*pb.ConsumerGroup, error) {
+	groups := map[string]*pb.ConsumerGroup{}
+	err := f.MetaStore.View(func(tx *badger.Txn) error {
+		prefix := []byte("ConsumerGroup-")
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchSize = 100
+		it := tx.NewIterator(opts)
+		defer it.Close()
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			item := it.Item()
+			err := item.Value(func(v []byte) error {
+				var group pb.ConsumerGroup
+				err := util.DeserializeMessage(v, &group)
+				if err != nil {
+					return err
+				}
+				groups[group.GetId()] = &group
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error with local store, %s", err)
+	}
+	return groups, nil
+}
+
+func (f *NodeState) getConsumerGroup(id string, topic string) (*pb.ConsumerGroup, error) {
 	var group pb.ConsumerGroup
 	err := f.MetaStore.View(func(tx *badger.Txn) error {
-		v, err := tx.Get([]byte("ConsumerGroup-" + id))
+		v, err := tx.Get([]byte("ConsumerGroup-" + topic + "-" + id))
 		if err != nil {
 			return nil
 		}
@@ -126,7 +188,7 @@ func (f *NodeState) getConsumerGroup(id string) (*pb.ConsumerGroup, error) {
 }
 
 func (f *NodeState) Ack(request *pb.Ack) (interface{}, error) {
-	group, err := f.getConsumerGroup(request.GroupId)
+	group, err := f.getConsumerGroup(request.GroupId, request.Topic)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +204,7 @@ func (f *NodeState) Ack(request *pb.Ack) (interface{}, error) {
 		if err != nil {
 			return fmt.Errorf("decoding issues with this %w", err)
 		}
-		consumerId := []byte("ConsumerGroup-" + group.Id)
+		consumerId := []byte("ConsumerGroup-" + request.Topic + "-" + group.Id)
 		err = tx.Set(consumerId, buf)
 		if err != nil {
 			log.Printf("error putting items in bucket, %s", err)

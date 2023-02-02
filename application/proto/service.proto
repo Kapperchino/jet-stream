@@ -6,10 +6,19 @@ service MessageService {
   rpc PublishMessages(PublishMessageRequest) returns (PublishMessageResponse) {}
   rpc CreateConsumer(CreateConsumerRequest) returns (CreateConsumerResponse) {}
   rpc CreateConsumerGroup(CreateConsumerGroupRequest) returns (CreateConsumerGroupResponse) {}
+  rpc GetConsumerGroups(GetConsumerGroupsRequest) returns (GetConsumerGroupsResponse) {}
   rpc Consume(ConsumeRequest) returns (ConsumeResponse) {}
   rpc CreateTopic(CreateTopicRequest) returns (CreateTopicResponse) {}
   rpc AckConsume(AckConsumeRequest) returns (AckConsumeResponse) {}
   rpc GetMeta(GetMetaRequest) returns (GetMetaResponse){}
+}
+
+message GetConsumerGroupsRequest {
+  string topic = 1;
+}
+
+message GetConsumerGroupsResponse {
+  map<string, ConsumerGroup> groups = 1;
 }
 
 message CreateConsumerGroupRequest{
@@ -26,11 +35,25 @@ message GetMetaRequest {
 }
 
 message GetMetaResponse{
+  map<string, Topic> topics = 1;
+  map<string, ConsumerGroup> consumerGroups = 2;
+}
+
+message Topic {
+  string name = 1;
+  map<uint64, Partition> partitions = 2;
+}
+
+message Partition{
+  uint64 num = 1;
+  string topic = 2;
+  uint64 offset = 3;
 }
 
 message AckConsumeRequest {
   map<uint64, uint64> offsets = 1;
   string groupId = 2;
+  string topic = 3;
 }
 
 message AckConsumeResponse {
@@ -159,6 +182,7 @@ message ConsumerGroup{
 message Ack{
   map<uint64, uint64> offsets = 1;
   string groupId = 2;
+  string topic = 3;
 }
 
 message AckResult{
