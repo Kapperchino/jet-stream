@@ -69,18 +69,25 @@ func New(address string) (*JetClient, error) {
 	}, nil
 }
 
-func PublishMessage(messages []*proto.Message) (*proto.PublishMessageResponse, error) {
+// PublishMessage need to get each partition's location within the cluster, then do consistent hashing with the key to get the partition needed
+// TODO balancing
+func PublishMessage(messages []*proto.KeyVal, topic string) (*proto.PublishMessageResponse, error) {
 	return nil, nil
 }
 
+// CreateTopic needs to first check if the topic already exists, and if not it'll need to distribute partitions evenly across
+// shards
 func CreateTopic(name string, partitions int) (*proto.CreateTopicResponse, error) {
 	return nil, nil
 }
 
-func CreateConsumer(id uint64) (*proto.CreateConsumerResponse, error) {
+// CreateConsumerGroup creates multiple consumers on each shard that contains the partitions of the topic, stores
+// the id of each consumer
+func CreateConsumerGroup(topic string) (*proto.CreateConsumerResponse, error) {
 	return nil, nil
 }
 
+// ConsumeMessage need to check if the consumer is created, if true then find
 func ConsumeMessage(topic string, id uint64) (*proto.ConsumeRequest, error) {
 	return nil, nil
 }

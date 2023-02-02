@@ -24,9 +24,11 @@ const _ = grpc.SupportPackageIsVersion7
 type MessageServiceClient interface {
 	PublishMessages(ctx context.Context, in *PublishMessageRequest, opts ...grpc.CallOption) (*PublishMessageResponse, error)
 	CreateConsumer(ctx context.Context, in *CreateConsumerRequest, opts ...grpc.CallOption) (*CreateConsumerResponse, error)
+	CreateConsumerGroup(ctx context.Context, in *CreateConsumerGroupRequest, opts ...grpc.CallOption) (*CreateConsumerGroupResponse, error)
 	Consume(ctx context.Context, in *ConsumeRequest, opts ...grpc.CallOption) (*ConsumeResponse, error)
 	CreateTopic(ctx context.Context, in *CreateTopicRequest, opts ...grpc.CallOption) (*CreateTopicResponse, error)
 	AckConsume(ctx context.Context, in *AckConsumeRequest, opts ...grpc.CallOption) (*AckConsumeResponse, error)
+	GetMeta(ctx context.Context, in *GetMetaRequest, opts ...grpc.CallOption) (*GetMetaResponse, error)
 }
 
 type messageServiceClient struct {
@@ -49,6 +51,15 @@ func (c *messageServiceClient) PublishMessages(ctx context.Context, in *PublishM
 func (c *messageServiceClient) CreateConsumer(ctx context.Context, in *CreateConsumerRequest, opts ...grpc.CallOption) (*CreateConsumerResponse, error) {
 	out := new(CreateConsumerResponse)
 	err := c.cc.Invoke(ctx, "/MessageService/CreateConsumer", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) CreateConsumerGroup(ctx context.Context, in *CreateConsumerGroupRequest, opts ...grpc.CallOption) (*CreateConsumerGroupResponse, error) {
+	out := new(CreateConsumerGroupResponse)
+	err := c.cc.Invoke(ctx, "/MessageService/CreateConsumerGroup", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -82,15 +93,26 @@ func (c *messageServiceClient) AckConsume(ctx context.Context, in *AckConsumeReq
 	return out, nil
 }
 
+func (c *messageServiceClient) GetMeta(ctx context.Context, in *GetMetaRequest, opts ...grpc.CallOption) (*GetMetaResponse, error) {
+	out := new(GetMetaResponse)
+	err := c.cc.Invoke(ctx, "/MessageService/GetMeta", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MessageServiceServer is the server API for MessageService service.
 // All implementations must embed UnimplementedMessageServiceServer
 // for forward compatibility
 type MessageServiceServer interface {
 	PublishMessages(context.Context, *PublishMessageRequest) (*PublishMessageResponse, error)
 	CreateConsumer(context.Context, *CreateConsumerRequest) (*CreateConsumerResponse, error)
+	CreateConsumerGroup(context.Context, *CreateConsumerGroupRequest) (*CreateConsumerGroupResponse, error)
 	Consume(context.Context, *ConsumeRequest) (*ConsumeResponse, error)
 	CreateTopic(context.Context, *CreateTopicRequest) (*CreateTopicResponse, error)
 	AckConsume(context.Context, *AckConsumeRequest) (*AckConsumeResponse, error)
+	GetMeta(context.Context, *GetMetaRequest) (*GetMetaResponse, error)
 	mustEmbedUnimplementedMessageServiceServer()
 }
 
@@ -104,6 +126,9 @@ func (UnimplementedMessageServiceServer) PublishMessages(context.Context, *Publi
 func (UnimplementedMessageServiceServer) CreateConsumer(context.Context, *CreateConsumerRequest) (*CreateConsumerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateConsumer not implemented")
 }
+func (UnimplementedMessageServiceServer) CreateConsumerGroup(context.Context, *CreateConsumerGroupRequest) (*CreateConsumerGroupResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateConsumerGroup not implemented")
+}
 func (UnimplementedMessageServiceServer) Consume(context.Context, *ConsumeRequest) (*ConsumeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Consume not implemented")
 }
@@ -112,6 +137,9 @@ func (UnimplementedMessageServiceServer) CreateTopic(context.Context, *CreateTop
 }
 func (UnimplementedMessageServiceServer) AckConsume(context.Context, *AckConsumeRequest) (*AckConsumeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AckConsume not implemented")
+}
+func (UnimplementedMessageServiceServer) GetMeta(context.Context, *GetMetaRequest) (*GetMetaResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMeta not implemented")
 }
 func (UnimplementedMessageServiceServer) mustEmbedUnimplementedMessageServiceServer() {}
 
@@ -158,6 +186,24 @@ func _MessageService_CreateConsumer_Handler(srv interface{}, ctx context.Context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MessageServiceServer).CreateConsumer(ctx, req.(*CreateConsumerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_CreateConsumerGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateConsumerGroupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).CreateConsumerGroup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/MessageService/CreateConsumerGroup",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).CreateConsumerGroup(ctx, req.(*CreateConsumerGroupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -216,6 +262,24 @@ func _MessageService_AckConsume_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessageService_GetMeta_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMetaRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).GetMeta(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/MessageService/GetMeta",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).GetMeta(ctx, req.(*GetMetaRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MessageService_ServiceDesc is the grpc.ServiceDesc for MessageService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -232,6 +296,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MessageService_CreateConsumer_Handler,
 		},
 		{
+			MethodName: "CreateConsumerGroup",
+			Handler:    _MessageService_CreateConsumerGroup_Handler,
+		},
+		{
 			MethodName: "Consume",
 			Handler:    _MessageService_Consume_Handler,
 		},
@@ -242,6 +310,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AckConsume",
 			Handler:    _MessageService_AckConsume_Handler,
+		},
+		{
+			MethodName: "GetMeta",
+			Handler:    _MessageService_GetMeta_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -5,14 +5,32 @@ option go_package = "github.com/Kapperchino/jet-application/proto";
 service MessageService {
   rpc PublishMessages(PublishMessageRequest) returns (PublishMessageResponse) {}
   rpc CreateConsumer(CreateConsumerRequest) returns (CreateConsumerResponse) {}
+  rpc CreateConsumerGroup(CreateConsumerGroupRequest) returns (CreateConsumerGroupResponse) {}
   rpc Consume(ConsumeRequest) returns (ConsumeResponse) {}
   rpc CreateTopic(CreateTopicRequest) returns (CreateTopicResponse) {}
   rpc AckConsume(AckConsumeRequest) returns (AckConsumeResponse) {}
+  rpc GetMeta(GetMetaRequest) returns (GetMetaResponse){}
+}
+
+message CreateConsumerGroupRequest{
+  string topic = 1;
+}
+
+//uuid for consumer group id
+message CreateConsumerGroupResponse {
+  string id = 1;
+  repeated Consumer consumers = 2;
+}
+
+message GetMetaRequest {
+}
+
+message GetMetaResponse{
 }
 
 message AckConsumeRequest {
   map<uint64, uint64> offsets = 1;
-  uint64 id = 2;
+  string groupId = 2;
 }
 
 message AckConsumeResponse {
@@ -48,16 +66,22 @@ message CreateTopicResponse {
 
 message CreateConsumerRequest {
   string topic = 1;
+  string groupId = 2;
 }
 
 message CreateConsumerResponse {
-  uint64 consumerId = 1;
+  string consumerId = 1;
   uint64 lastIndex = 2;
+}
+
+message ConsumeFromGroupRequest {
+  string topic = 1;
+  string id = 2;
 }
 
 message ConsumeRequest {
   string topic = 1;
-  uint64 consumerId = 2;
+  string groupId = 2;
 }
 
 message ConsumeResponse {
@@ -91,9 +115,11 @@ message PublishResult {
 
 message CreateConsumer{
   string topic = 1;
+  string groupId = 2;
 }
 
 message CreateConsumerResult{
+  Consumer consumer = 1;
 }
 
 message CreateTopic{
@@ -119,14 +145,33 @@ message RemoveMember{
 message RemoveMemberResult{
 }
 
+message Consumer{
+  string id = 1;
+  uint64 partition = 2;
+  uint64 offset = 3;
+}
+
+message ConsumerGroup{
+  string id = 1;
+  map<string, Consumer> consumers = 2;
+}
+
 message Ack{
   map<uint64, uint64> offsets = 1;
-  uint64 id = 2;
+  string groupId = 2;
 }
 
 message AckResult{
 }
 
+message CreateConsumerGroup{
+  string topic = 1;
+}
+
+message CreateConsumerGroupResult{
+  string id = 1;
+  repeated Consumer consumers = 2;
+}
 
 enum Operation {
   PUBLISH = 0;
@@ -135,6 +180,7 @@ enum Operation {
   CREATE_TOPIC = 3;
   ADD_MEMBER = 4;
   REMOVE_MEMBER = 5;
+  CREATE_CONSUMER_GROUP = 6;
 }
 
 message WriteOperation {
@@ -145,8 +191,9 @@ message WriteOperation {
     CreateTopic createTopic = 4;
     AddMember addMember = 5;
     RemoveMember removeMember = 6;
+    CreateConsumerGroup createConsumerGroup = 7;
   }
-  Operation code = 7;
+  Operation code = 8;
 }
 
 message WriteResult {
@@ -157,6 +204,7 @@ message WriteResult {
     CreateTopicResult createTopicResult = 4;
     AddMemberResult addMemberResult = 5;
     RemoveMemberResult removeMemberResult = 6;
+    CreateConsumerGroupResult createConsumerGroupResult = 7;
   }
 }
 

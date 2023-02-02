@@ -54,39 +54,6 @@ func (r RpcInterface) PublishMessages(ctx context.Context, req *pb.PublishMessag
 	return res, nil
 }
 
-func CreateConsumerInternal(r RpcInterface, req *pb.CreateConsumerRequest) (*pb.CreateConsumerResponse, error) {
-	input := &pb.WriteOperation{
-		Operation: &pb.WriteOperation_CreateConsumer{
-			CreateConsumer: &pb.CreateConsumer{
-				Topic: req.GetTopic(),
-			},
-		},
-		Code: pb.Operation_CREATE_CONSUMER,
-	}
-	val, _ := util.SerializeMessage(input)
-	res := r.Raft.Apply(val, time.Second)
-	if err := res.Error(); err != nil {
-		return nil, rafterrors.MarkRetriable(err)
-	}
-	err, isErr := res.Response().(error)
-	if isErr {
-		return nil, err
-	}
-	response, isValid := res.Response().(*pb.CreateConsumerResponse)
-	if !isValid {
-		return nil, errors.New("unknown data type")
-	}
-	return response, nil
-}
-
-func (r RpcInterface) CreateConsumer(ctx context.Context, req *pb.CreateConsumerRequest) (*pb.CreateConsumerResponse, error) {
-	res, err := CreateConsumerInternal(r, req)
-	if err != nil {
-		return nil, err
-	}
-	return res, nil
-}
-
 func ConsumeInternal(r RpcInterface, req *pb.ConsumeRequest) (*pb.ConsumeResponse, error) {
 	return r.NodeState.Consume(req)
 }
@@ -146,7 +113,7 @@ func AckConsumeInternal(r RpcInterface, req *pb.AckConsumeRequest) (*pb.AckConsu
 		Operation: &pb.WriteOperation_Ack{
 			Ack: &pb.Ack{
 				Offsets: req.Offsets,
-				Id:      req.Id,
+				GroupId: req.GroupId,
 			},
 		},
 		Code: pb.Operation_ACK,
@@ -161,6 +128,39 @@ func AckConsumeInternal(r RpcInterface, req *pb.AckConsumeRequest) (*pb.AckConsu
 		return nil, err
 	}
 	response, isValid := res.Response().(*pb.AckConsumeResponse)
+	if !isValid {
+		return nil, errors.New("unknown data type")
+	}
+	return response, nil
+}
+
+func (r RpcInterface) CreateConsumerGroup(_ context.Context, req *pb.CreateConsumerGroupRequest) (*pb.CreateConsumerGroupResponse, error) {
+	res, err := CreateConsumerGroupInternal(r, req)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+func CreateConsumerGroupInternal(r RpcInterface, req *pb.CreateConsumerGroupRequest) (*pb.CreateConsumerGroupResponse, error) {
+	input := &pb.WriteOperation{
+		Operation: &pb.WriteOperation_CreateConsumerGroup{
+			CreateConsumerGroup: &pb.CreateConsumerGroup{
+				Topic: req.Topic,
+			},
+		},
+		Code: pb.Operation_CREATE_CONSUMER_GROUP,
+	}
+	val, _ := util.SerializeMessage(input)
+	res := r.Raft.Apply(val, time.Second)
+	if err := res.Error(); err != nil {
+		return nil, rafterrors.MarkRetriable(err)
+	}
+	err, isErr := res.Response().(error)
+	if isErr {
+		return nil, err
+	}
+	response, isValid := res.Response().(*pb.CreateConsumerGroupResponse)
 	if !isValid {
 		return nil, errors.New("unknown data type")
 	}

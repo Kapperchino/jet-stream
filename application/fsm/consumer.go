@@ -1,62 +1,48 @@
 package fsm
 
 import (
-	"bytes"
-	"encoding/gob"
 	"fmt"
 	pb "github.com/Kapperchino/jet-application/proto"
 	"github.com/Kapperchino/jet/util"
 	"github.com/dgraph-io/badger/v3"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
-	"strconv"
 )
 
-type Consumer struct {
-	Id          uint64
-	Checkpoints []Checkpoint
-}
-
-type Checkpoint struct {
-	Offset    uint64
-	Partition uint64
-}
-
-// CreateConsumer write operation, done in fsm
-func (f *NodeState) CreateConsumer(req *pb.CreateConsumer) (interface{}, error) {
+// CreateConsumerGroup write operation, done in fsm
+func (f *NodeState) CreateConsumerGroup(req *pb.CreateConsumerGroup) (interface{}, error) {
 	topic, err := f.getTopic(req.GetTopic())
 	if err != nil {
 		return nil, err
 	}
-	response := new(pb.CreateConsumerResponse)
-	seq, err := f.MessageStore.GetSequence([]byte("Consumer-"), 1000)
-	defer seq.Release()
+	response := new(pb.CreateConsumerGroupResponse)
+	consumers := make([]*pb.Consumer, len(topic.Partitions))
 	err = f.MetaStore.Update(func(tx *badger.Txn) error {
-		id, _ := seq.Next()
-		list := make([]Checkpoint, len(topic.Partitions))
-		for i := 0; i < len(topic.Partitions); i++ {
-			list[i] = Checkpoint{
+		group := &pb.ConsumerGroup{
+			Id:        uuid.NewString(),
+			Consumers: make(map[string]*pb.Consumer),
+		}
+		for num, partition := range topic.Partitions {
+			consumer := &pb.Consumer{
+				Id:        uuid.NewString(),
+				Partition: num,
 				Offset:    0,
-				Partition: uint64(i),
 			}
+			group.Consumers[uuid.NewString()] = consumer
+			consumers[partition.Num] = consumer
 		}
-		consumer := Consumer{
-			Id:          id,
-			Checkpoints: list,
-		}
-		var buf bytes.Buffer
-		enc := gob.NewEncoder(&buf)
-		err = enc.Encode(consumer)
+		buf, err := util.SerializeMessage(group)
 		if err != nil {
-			log.Printf("error encoding Topic, %s", err)
+			log.Printf("error encoding consumer group, %s", err)
 			return fmt.Errorf("error encoding Topic, %w", err)
 		}
-		consumerId := []byte("Consumer-" + strconv.FormatUint(id, 10))
-		err = tx.Set(consumerId, buf.Bytes())
+		err = tx.Set([]byte("ConsumerGroup-"+group.Id), buf)
 		if err != nil {
 			log.Printf("error putting items in bucket, %s", err)
 			return fmt.Errorf("error putting items in bucket, %w", err)
 		}
-		response.ConsumerId = id
+		response.Consumers = consumers
+		response.Id = group.Id
 		return nil
 	})
 	if err != nil {
@@ -67,18 +53,14 @@ func (f *NodeState) CreateConsumer(req *pb.CreateConsumer) (interface{}, error) 
 
 // Consume operation, should be done in replicas and not in fsm
 func (f *NodeState) Consume(req *pb.ConsumeRequest) (*pb.ConsumeResponse, error) {
-	topic, err := f.getTopic(req.GetTopic())
-	if err != nil {
-		return nil, fmt.Errorf("topic does not exist, %w", err)
-	}
 	res := pb.ConsumeResponse{
 		Messages:  make([]*pb.Message, 0),
 		LastIndex: 0,
 	}
-	err = f.MetaStore.View(func(tx *badger.Txn) error {
-		consumer, err := f.getConsumer(req.GetConsumerId())
+	err := f.MessageStore.View(func(tx *badger.Txn) error {
+		group, err := f.getConsumerGroup(req.GetGroupId())
 		if err != nil {
-			log.Err(err).Msgf("Error getting consumer")
+			log.Err(err).Msgf("Error getting consumer group")
 			return err
 		}
 		opts := badger.DefaultIteratorOptions
@@ -87,10 +69,10 @@ func (f *NodeState) Consume(req *pb.ConsumeRequest) (*pb.ConsumeResponse, error)
 
 		defer it.Close()
 
-		for i, _ := range topic.Partitions {
+		for _, val := range group.Consumers {
 			var buf []*pb.Message
-			prefix := makePrefix(req.Topic, uint64(i))
-			key := makeKey(req.GetTopic(), uint64(i), consumer.Checkpoints[i].Offset+1)
+			prefix := makePrefix(req.Topic, val.Partition)
+			key := makeKey(req.GetTopic(), val.Partition, val.Offset+1)
 			for it.Seek(key); it.ValidForPrefix(prefix); it.Next() {
 				//now we need to seek until the message is found
 				item := it.Item()
@@ -117,10 +99,10 @@ func (f *NodeState) Consume(req *pb.ConsumeRequest) (*pb.ConsumeResponse, error)
 	return &res, nil
 }
 
-func (f *NodeState) getConsumer(consumerId uint64) (*Consumer, error) {
-	var consumer *Consumer
+func (f *NodeState) getConsumerGroup(id string) (*pb.ConsumerGroup, error) {
+	var group pb.ConsumerGroup
 	err := f.MetaStore.View(func(tx *badger.Txn) error {
-		v, err := tx.Get([]byte("Consumer-" + strconv.FormatUint(consumerId, 10)))
+		v, err := tx.Get([]byte("ConsumerGroup-" + id))
 		if err != nil {
 			return nil
 		}
@@ -129,40 +111,39 @@ func (f *NodeState) getConsumer(consumerId uint64) (*Consumer, error) {
 			vbytes = val
 			return nil
 		})
-		buf := bytes.NewBuffer(vbytes)
-		dec := gob.NewDecoder(buf)
-		if err := dec.Decode(&consumer); err != nil {
+		err = util.DeserializeMessage(vbytes, &group)
+		if err != nil {
 			return fmt.Errorf("decoding issues with this %w", err)
 		}
 		return nil
 	})
-	if consumer == nil {
+	if &group == nil {
 		return nil, fmt.Errorf("consumer does not exist")
 	} else if err != nil {
 		return nil, fmt.Errorf("error with local store, %s", err)
 	}
-	return consumer, nil
+	return &group, nil
 }
 
 func (f *NodeState) Ack(request *pb.Ack) (interface{}, error) {
-	consumer, err := f.getConsumer(request.Id)
+	group, err := f.getConsumerGroup(request.GroupId)
 	if err != nil {
 		return nil, err
 	}
-	for partition, offset := range request.Offsets {
-		consumer.Checkpoints[partition].Offset = offset
+	partitionConsumer := make(map[uint64]*pb.Consumer)
+	for _, consumer := range group.Consumers {
+		partitionConsumer[consumer.Partition] = consumer
 	}
-
+	for partition, offset := range request.Offsets {
+		partitionConsumer[partition].Offset = offset
+	}
 	err = f.MetaStore.Update(func(tx *badger.Txn) error {
-		var buf bytes.Buffer
-		enc := gob.NewEncoder(&buf)
-		err = enc.Encode(consumer)
+		buf, err := util.SerializeMessage(group)
 		if err != nil {
-			log.Printf("error encoding Topic, %s", err)
-			return fmt.Errorf("error encoding Topic, %w", err)
+			return fmt.Errorf("decoding issues with this %w", err)
 		}
-		consumerId := []byte("Consumer-" + strconv.FormatUint(consumer.Id, 10))
-		err = tx.Set(consumerId, buf.Bytes())
+		consumerId := []byte("ConsumerGroup-" + group.Id)
+		err = tx.Set(consumerId, buf)
 		if err != nil {
 			log.Printf("error putting items in bucket, %s", err)
 			return fmt.Errorf("error putting items in bucket, %w", err)

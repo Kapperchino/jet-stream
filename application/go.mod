@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/Kapperchino/jet/util v0.0.0-20230122062940-fb9c7e744c6b
 	github.com/dgraph-io/badger/v3 v3.2103.5
+	github.com/google/uuid v1.3.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/hashicorp/raft v1.3.10
 	github.com/rs/zerolog v1.28.0

@@ -43,6 +43,8 @@ func onRaftUpdates(raftChan chan raft.Observation, i *RpcInterface) {
 	}
 
 }
+
+// TODO: update node when there's a change
 func onFailedHeartbeat(i *RpcInterface, update raft.FailedHeartbeatObservation) {
 	i.Logger.Warn().Msgf("Peer %s cannot be connected to, last contact: %s, nodes: %s", update.PeerID, update.LastContact.String(), i.Raft.GetConfiguration().Configuration().Servers)
 	if time.Now().Sub(update.LastContact).Seconds() > 10 {

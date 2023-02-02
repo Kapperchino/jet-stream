@@ -11,10 +11,10 @@ func InitHandlers() []func(f *fsm.NodeState, op *pb.WriteOperation, l *raft.Log)
 	handlerMap := make([]func(f *fsm.NodeState, op *pb.WriteOperation, l *raft.Log) interface{}, 100)
 	handlerMap[pb.Operation_PUBLISH] = HandlePublish
 	handlerMap[pb.Operation_ACK] = HandleAck
-	handlerMap[pb.Operation_CREATE_CONSUMER] = HandleCreateConsume
 	handlerMap[pb.Operation_CREATE_TOPIC] = HandleCreateTopic
 	handlerMap[pb.Operation_ADD_MEMBER] = HandleAddMember
 	handlerMap[pb.Operation_REMOVE_MEMBER] = HandleRemoveMember
+	handlerMap[pb.Operation_CREATE_CONSUMER_GROUP] = HandleCreateConsumerGroup
 	return handlerMap
 }
 
@@ -63,8 +63,8 @@ func HandleCreateTopic(f *fsm.NodeState, op *pb.WriteOperation, l *raft.Log) int
 	return res
 }
 
-func HandleCreateConsume(f *fsm.NodeState, op *pb.WriteOperation, l *raft.Log) interface{} {
-	res, err := f.CreateConsumer(op.GetCreateConsumer())
+func HandleCreateConsumerGroup(f *fsm.NodeState, op *pb.WriteOperation, l *raft.Log) interface{} {
+	res, err := f.CreateConsumerGroup(op.GetCreateConsumerGroup())
 	if err != nil {
 		log.Error().Err(err)
 		return err

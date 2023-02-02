@@ -13,7 +13,7 @@ import (
 
 type Topic struct {
 	Name       string
-	Partitions []Partition
+	Partitions map[uint64]Partition
 }
 
 type Partition struct {
@@ -30,10 +30,10 @@ func (f *NodeState) CreateTopic(req *pb.CreateTopic) (interface{}, error) {
 	}
 	newTopic := Topic{
 		Name:       req.GetTopic(),
-		Partitions: []Partition{},
+		Partitions: map[uint64]Partition{},
 	}
 	for i := uint64(0); i < req.GetPartitions(); i++ {
-		newTopic.Partitions = append(newTopic.Partitions, f.CreatePartition(i, req.GetTopic()))
+		newTopic.Partitions[i] = f.CreatePartition(i, req.GetTopic())
 	}
 	//seralize Topic and put in db
 	var buf bytes.Buffer
@@ -43,7 +43,7 @@ func (f *NodeState) CreateTopic(req *pb.CreateTopic) (interface{}, error) {
 		return nil, fmt.Errorf("error encoding Topic")
 	}
 	err = f.MetaStore.Update(func(tx *badger.Txn) error {
-		err = tx.Set([]byte(newTopic.Name), buf.Bytes())
+		err = tx.Set([]byte("Topic-"+newTopic.Name), buf.Bytes())
 		if err != nil {
 			return err
 		}
@@ -59,7 +59,7 @@ func (f *NodeState) CreateTopic(req *pb.CreateTopic) (interface{}, error) {
 func (f *NodeState) getTopic(topicName string) (*Topic, error) {
 	var curTopic *Topic
 	err := f.MetaStore.View(func(tx *badger.Txn) error {
-		v, err := tx.Get([]byte(topicName))
+		v, err := tx.Get([]byte("Topic-" + topicName))
 		if err != nil {
 			return nil
 		}

@@ -106,7 +106,7 @@ func (suite *FsmTest) Test_Publish_No_Topic() {
 }
 
 func (suite *FsmTest) Test_Consume_No_Topic() {
-	res, err := createConsumer(suite.client, "Test_Consume_Err")
+	res, err := createConsumerGroup(suite.client, "Test_Consume_Err")
 	assert.NotNil(suite.T(), err)
 	assert.Nil(suite.T(), res)
 	err.Error()
@@ -130,16 +130,16 @@ func (suite *FsmTest) Test_Consume_Ack() {
 		assert.Nil(suite.T(), err)
 		assert.NotNil(suite.T(), res)
 	}
-	res, err := createConsumer(suite.client, TOPIC)
+	res, err := createConsumerGroup(suite.client, TOPIC)
 	assert.Nil(suite.T(), err)
-	msgs, err := consumeMessages(suite.client, TOPIC, res.ConsumerId)
+	msgs, err := consumeMessages(suite.client, TOPIC, res.Id)
 	assert.Nil(suite.T(), err)
 	for x := uint64(1); x <= 25; x++ {
 		assert.Equal(suite.T(), x, msgs.Messages[x-1].Offset)
 	}
-	_, err = ack(suite.client, map[uint64]uint64{0: 25}, res.ConsumerId)
+	_, err = ack(suite.client, map[uint64]uint64{0: 25}, res.Id)
 	assert.Nil(suite.T(), err)
-	msgs, err = consumeMessages(suite.client, TOPIC, res.ConsumerId)
+	msgs, err = consumeMessages(suite.client, TOPIC, res.Id)
 	assert.Nil(suite.T(), err)
 	assert.Equal(suite.T(), 0, len(msgs.Messages))
 }
@@ -163,9 +163,9 @@ func (suite *FsmTest) Test_Consume_No_Ack() {
 		assert.Nil(suite.T(), err)
 		assert.NotNil(suite.T(), res)
 	}
-	res, err := createConsumer(suite.client, TOPIC)
+	res, err := createConsumerGroup(suite.client, TOPIC)
 	assert.Nil(suite.T(), err)
-	msgs, err := consumeMessages(suite.client, TOPIC, res.ConsumerId)
+	msgs, err := consumeMessages(suite.client, TOPIC, res.Id)
 	for x := uint64(1); x <= 10; x++ {
 		assert.Equal(suite.T(), x, msgs.Messages[x-1].Offset)
 	}
@@ -192,21 +192,25 @@ func (suite *FsmTest) Test_Consume_Ack_Two_Partitions() {
 		assert.Nil(suite.T(), err)
 		assert.NotNil(suite.T(), res)
 	}
-	res, err := createConsumer(suite.client, TOPIC)
+	res, err := createConsumerGroup(suite.client, TOPIC)
 	assert.Nil(suite.T(), err)
-	msgs, err := consumeMessages(suite.client, TOPIC, res.ConsumerId)
+	msgs, err := consumeMessages(suite.client, TOPIC, res.Id)
 	assert.Nil(suite.T(), err)
+	partCount := []int{0, 0}
+
 	for x := uint64(1); x <= 25; x++ {
-		assert.Equal(suite.T(), uint64(0), msgs.Messages[x-1].Partition)
+		partCount[msgs.Messages[x-1].Partition]++
 		assert.Equal(suite.T(), x, msgs.Messages[x-1].Offset)
 	}
 	for x := uint64(26); x <= 50; x++ {
-		assert.Equal(suite.T(), uint64(1), msgs.Messages[x-1].Partition)
+		partCount[msgs.Messages[x-1].Partition]++
 		assert.Equal(suite.T(), x-25, msgs.Messages[x-1].Offset)
 	}
-	_, err = ack(suite.client, map[uint64]uint64{0: 25, 1: 25}, res.ConsumerId)
+	assert.Equal(suite.T(), 25, partCount[0])
+	assert.Equal(suite.T(), 25, partCount[1])
+	_, err = ack(suite.client, map[uint64]uint64{0: 25, 1: 25}, res.Id)
 	assert.Nil(suite.T(), err)
-	msgs, err = consumeMessages(suite.client, TOPIC, res.ConsumerId)
+	msgs, err = consumeMessages(suite.client, TOPIC, res.Id)
 	assert.Nil(suite.T(), err)
 	assert.Equal(suite.T(), 0, len(msgs.Messages))
 }
@@ -215,17 +219,17 @@ func TestFSMTestSuite(t *testing.T) {
 	suite.Run(t, new(FsmTest))
 }
 
-func createConsumer(client pb.MessageServiceClient, topic string) (*pb.CreateConsumerResponse, error) {
-	res, err := client.CreateConsumer(context.Background(), &pb.CreateConsumerRequest{
+func createConsumerGroup(client pb.MessageServiceClient, topic string) (*pb.CreateConsumerGroupResponse, error) {
+	res, err := client.CreateConsumerGroup(context.Background(), &pb.CreateConsumerGroupRequest{
 		Topic: topic,
 	})
 	return res, err
 }
 
-func consumeMessages(client pb.MessageServiceClient, topic string, consumerId uint64) (*pb.ConsumeResponse, error) {
+func consumeMessages(client pb.MessageServiceClient, topic string, groupId string) (*pb.ConsumeResponse, error) {
 	res, err := client.Consume(context.Background(), &pb.ConsumeRequest{
-		Topic:      topic,
-		ConsumerId: consumerId,
+		Topic:   topic,
+		GroupId: groupId,
 	})
 	return res, err
 }
@@ -239,10 +243,10 @@ func publishMessages(client pb.MessageServiceClient, topic string, messages []*p
 	return res, err
 }
 
-func ack(client pb.MessageServiceClient, offsets map[uint64]uint64, consumerId uint64) (*pb.AckConsumeResponse, error) {
+func ack(client pb.MessageServiceClient, offsets map[uint64]uint64, groupId string) (*pb.AckConsumeResponse, error) {
 	res, err := client.AckConsume(context.Background(), &pb.AckConsumeRequest{
 		Offsets: offsets,
-		Id:      consumerId,
+		GroupId: groupId,
 	})
 	return res, err
 }

@@ -29,7 +29,7 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 	key := makePrefix(req.Topic, req.Partition)
 	seq, err := f.MessageStore.GetSequence(key, 1000)
 	defer seq.Release()
-	err = f.MetaStore.Update(func(tx *badger.Txn) error {
+	err = f.MessageStore.Update(func(tx *badger.Txn) error {
 		for _, m := range req.GetMessages() {
 			offset, _ := seq.Next()
 			offset++
@@ -63,14 +63,14 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 		log.Err(err)
 		return nil, err
 	}
-
-	curTopic.Partitions[req.GetPartition()].Offset = newOffset
+	partition := curTopic.Partitions[req.Partition]
+	partition.Offset = newOffset
 	return res, nil
 }
 
 func (f *NodeState) getLastIndex(topic string, partition int64) (uint64, error) {
 	var lastRaftIndex uint64
-	err := f.MetaStore.View(func(tx *badger.Txn) error {
+	err := f.MessageStore.View(func(tx *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.Reverse = true
 		opts.PrefetchSize = 100
