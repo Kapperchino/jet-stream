@@ -81,7 +81,7 @@ message ScaleTopicResponse {
 
 message CreateTopicRequest {
   string topic = 1;
-  uint64 numPartitions = 2;
+  repeated uint64 partitions = 2;
 }
 
 message CreateTopicResponse {
@@ -147,7 +147,7 @@ message CreateConsumerResult{
 
 message CreateTopic{
   string topic = 1;
-  uint64 partitions = 2;
+  repeated uint64 partitions = 2;
 }
 
 message CreateTopicResult{

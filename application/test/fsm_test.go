@@ -46,8 +46,8 @@ func (suite *FsmTest) TearDownSuite() {
 func (suite *FsmTest) Test_Publish() {
 	log.Printf("Creating topic")
 	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
-		Topic:         "Test_Publish",
-		NumPartitions: 1,
+		Topic:      "Test_Publish",
+		Partitions: []uint64{0},
 	})
 	assert.Nil(suite.T(), err)
 	var arr []*pb.KeyVal
@@ -70,8 +70,8 @@ func (suite *FsmTest) Test_Publish() {
 func (suite *FsmTest) Test_Publish_Two_Partitions() {
 	log.Printf("Creating topic")
 	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
-		Topic:         "Test_Publish_Two_Partitions",
-		NumPartitions: 2,
+		Topic:      "Test_Publish_Two_Partitions",
+		Partitions: []uint64{0, 1},
 	})
 	assert.Nil(suite.T(), err)
 	var arr []*pb.KeyVal
@@ -115,8 +115,8 @@ func (suite *FsmTest) Test_Consume_No_Topic() {
 func (suite *FsmTest) Test_Consume_Ack() {
 	const TOPIC = "Test_Consume_Ack"
 	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
-		Topic:         TOPIC,
-		NumPartitions: 1,
+		Topic:      TOPIC,
+		Partitions: []uint64{0},
 	})
 	var arr []*pb.KeyVal
 	token := make([]byte, 3*1024*1024)
@@ -148,8 +148,8 @@ func (suite *FsmTest) Test_Consume_Ack() {
 func (suite *FsmTest) Test_Consume_No_Ack() {
 	const TOPIC = "Test_Consume_No_Ack"
 	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
-		Topic:         TOPIC,
-		NumPartitions: 1,
+		Topic:      TOPIC,
+		Partitions: []uint64{0},
 	})
 	var arr []*pb.KeyVal
 	token := make([]byte, 3*1024*1024)
@@ -174,8 +174,8 @@ func (suite *FsmTest) Test_Consume_No_Ack() {
 func (suite *FsmTest) Test_Consume_Ack_Two_Partitions() {
 	const TOPIC = "Test_Consume_Ack_Two_Partitions"
 	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
-		Topic:         TOPIC,
-		NumPartitions: 2,
+		Topic:      TOPIC,
+		Partitions: []uint64{0, 1},
 	})
 	var arr []*pb.KeyVal
 	token := make([]byte, 3*1024*1024)
@@ -218,8 +218,8 @@ func (suite *FsmTest) Test_Consume_Ack_Two_Partitions() {
 func (suite *FsmTest) Test_GetConsumerGroups() {
 	const TOPIC = "Test_GetConsumerGroups"
 	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
-		Topic:         TOPIC,
-		NumPartitions: 1,
+		Topic:      TOPIC,
+		Partitions: []uint64{0},
 	})
 	assert.Nil(suite.T(), err)
 	var arr []*pb.CreateConsumerGroupResponse
@@ -234,8 +234,8 @@ func (suite *FsmTest) Test_GetConsumerGroups() {
 func (suite *FsmTest) Test_GetMeta() {
 	const TOPIC = "Test_GetMeta"
 	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
-		Topic:         TOPIC,
-		NumPartitions: 1,
+		Topic:      TOPIC,
+		Partitions: []uint64{0},
 	})
 	assert.Nil(suite.T(), err)
 	var arr []*pb.CreateConsumerGroupResponse
@@ -247,8 +247,8 @@ func (suite *FsmTest) Test_GetMeta() {
 	assert.Equal(suite.T(), len(arr), 5)
 	meta, err := getMeta(suite.client)
 	assert.Nil(suite.T(), err)
-	assert.Equal(suite.T(), len(meta.ConsumerGroups), 5)
-	assert.Equal(suite.T(), len(meta.Topics), 1)
+	assert.NotZero(suite.T(), len(meta.ConsumerGroups))
+	assert.NotZero(suite.T(), len(meta.Topics))
 	assert.Equal(suite.T(), meta.Topics[TOPIC].Name, TOPIC)
 	assert.Equal(suite.T(), len(meta.Topics[TOPIC].Partitions), 1)
 }

@@ -100,20 +100,23 @@ func onPeerUpdate(i *RpcInterface, update raft.PeerObservation) {
 
 func onLeaderUpdate(i *RpcInterface, update raft.LeaderObservation) {
 	if string(update.LeaderID) == i.ClusterState.getMemberInfo().NodeId {
-		i.Logger.Debug().Msg("Node is already leader")
-		i.ClusterState.getCurShardInfo().leader = string(update.LeaderID)
+		i.Logger.Debug().Msgf("Node %s is already Leader", i.ClusterState.getMemberInfo().NodeId)
+		i.ClusterState.GetShardInfo().Leader = string(update.LeaderID)
 		i.ClusterState.getMemberInfo().IsLeader = true
 		return
 	}
 	//leadership update
 	i.ClusterState.getMemberInfo().IsLeader = false
-	i.ClusterState.getCurShardInfo().leader = string(update.LeaderID)
-	_, exist := i.ClusterState.getMemberMap().Get(string(update.LeaderID))
+	i.ClusterState.GetShardInfo().Leader = string(update.LeaderID)
+	item, exist := i.ClusterState.getMemberMap().Get(string(update.LeaderID))
 	if exist {
+		if item.NodeId == "" {
+			item.NodeId = string(update.LeaderID)
+		}
 		i.Logger.Debug().Msgf("Leader %s already exists, no-op", update.LeaderAddr)
 		return
 	}
-	//leader added, we should try to see if we can get a list of servers to add to
+	//Leader added, we should try to see if we can get a list of servers to add to
 	servers := i.Raft.GetConfiguration().Configuration().Servers
 	for _, server := range servers {
 		_, exist := i.ClusterState.getMemberMap().Get(string(server.ID))

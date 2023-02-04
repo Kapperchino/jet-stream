@@ -17,14 +17,14 @@ type RpcInterface struct {
 	pb.UnimplementedClusterMetaServiceServer
 }
 
-func InitClusterState(i *RpcInterface, nodeName string, address string, shardId string) *ClusterState {
-	clusterState := &ClusterState{
+func InitClusterState(i *RpcInterface, nodeName string, address string, shardId string) ClusterState {
+	clusterState := ClusterState{
 		ClusterInfo: haxmap.New[string, *ShardInfo](),
 		CurShardState: &ShardState{
 			RaftChan: make(chan raft.Observation, 50),
 			ShardInfo: &ShardInfo{
 				shardId:   shardId,
-				leader:    "",
+				Leader:    "",
 				MemberMap: haxmap.New[string, MemberInfo](),
 			},
 			MemberInfo: &MemberInfo{
@@ -72,7 +72,7 @@ func (r RpcInterface) GetClusterInfo(context.Context, *pb.GetClusterInfoRequest)
 	clusterMap.ForEach(func(s string, info *ShardInfo) bool {
 		resMap[s] = &pb.ShardInfo{
 			MemberAddressMap: toProtoMemberMap(info.MemberMap),
-			LeaderId:         info.leader,
+			LeaderId:         info.Leader,
 			ShardId:          info.shardId,
 		}
 		return true

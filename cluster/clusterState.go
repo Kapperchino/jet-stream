@@ -25,20 +25,20 @@ type MemberInfo struct {
 
 type ShardInfo struct {
 	shardId   string
-	leader    string
+	Leader    string
 	MemberMap *haxmap.Map[string, MemberInfo]
 }
 
-func (c ClusterState) getCurShardInfo() *ShardInfo {
+func (c ClusterState) GetShardInfo() *ShardInfo {
 	return c.CurShardState.ShardInfo
 }
 
 func (c ClusterState) getMemberMap() *haxmap.Map[string, MemberInfo] {
-	return c.getCurShardInfo().MemberMap
+	return c.GetShardInfo().MemberMap
 }
 
 func (c ClusterState) getLeader() string {
-	return c.getCurShardInfo().leader
+	return c.GetShardInfo().Leader
 }
 
 func (c ClusterState) getMemberInfo() *MemberInfo {
@@ -46,7 +46,7 @@ func (c ClusterState) getMemberInfo() *MemberInfo {
 }
 
 func (c ClusterState) getShardId() string {
-	return c.getCurShardInfo().shardId
+	return c.GetShardInfo().shardId
 }
 
 func (c ClusterState) getShardState() *ShardState {

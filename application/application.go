@@ -95,7 +95,7 @@ func CreateTopicInternal(r RpcInterface, req *pb.CreateTopicRequest) (*pb.Create
 		Operation: &pb.WriteOperation_CreateTopic{
 			CreateTopic: &pb.CreateTopic{
 				Topic:      req.GetTopic(),
-				Partitions: req.GetNumPartitions(),
+				Partitions: req.GetPartitions(),
 			},
 		},
 		Code: pb.Operation_CREATE_TOPIC,

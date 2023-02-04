@@ -87,16 +87,16 @@ func (c ClusterDelegate) MergeRemoteState(buf []byte, join bool) {
 		}
 		c.ClusterState.ClusterInfo.Set(meta.ShardId, &ShardInfo{
 			shardId:   meta.ShardId,
-			leader:    meta.LeaderId,
+			Leader:    meta.LeaderId,
 			MemberMap: memberMap,
 		})
 		return
 	}
 	//update the map if possible
 	memberMap := c.ClusterState.getMemberMap()
-	//check if leader is the same
+	//check if Leader is the same
 	if meta.LeaderId != c.ClusterState.getLeader() {
-		//leader changed need to update everything
+		//Leader changed need to update everything
 		for key, val := range meta.MemberAddressMap {
 			member, exists := memberMap.Get(key)
 			if exists {
@@ -118,7 +118,7 @@ func (c ClusterDelegate) MergeRemoteState(buf []byte, join bool) {
 				memberMap.Set(key, info)
 			}
 		}
-		c.ClusterState.getCurShardInfo().leader = meta.LeaderId
+		c.ClusterState.GetShardInfo().Leader = meta.LeaderId
 		return
 	}
 }

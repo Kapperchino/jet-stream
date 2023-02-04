@@ -152,17 +152,18 @@ func SetupServer(badgerDir string, raftDir string, address string, nodeName stri
 		return fmt.Sprintf("[%s] %s", nodeName, i)
 	}
 	clusterLog := log.With().Logger().Output(output)
-	clusterRpc := &cluster.RpcInterface{
+	clusterRpc := cluster.RpcInterface{
 		ClusterState: nil,
 		Raft:         r,
 		Logger:       &clusterLog,
 	}
-	clusterRpc.ClusterState = cluster.InitClusterState(clusterRpc, nodeName, address, shardId)
+	clusterState := cluster.InitClusterState(&clusterRpc, nodeName, address, shardId)
+	clusterRpc.ClusterState = &clusterState
 	var memberList *memberlist.Memberlist
 	if bootstrap {
 		memberListener := cluster.InitClusterListener(clusterRpc.ClusterState)
 		memberList = NewMemberList(MakeConfig(shardId, gossipAddress, memberListener, cluster.ClusterDelegate{
-			ClusterState: clusterRpc.ClusterState,
+			ClusterState: &clusterState,
 		}), rootNode)
 		clusterRpc.MemberList = memberList
 	}

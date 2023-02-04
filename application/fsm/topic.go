@@ -18,7 +18,7 @@ func (f *NodeState) CreateTopic(req *pb.CreateTopic) (interface{}, error) {
 		Name:       req.GetTopic(),
 		Partitions: map[uint64]*pb.Partition{},
 	}
-	for i := uint64(0); i < req.GetPartitions(); i++ {
+	for _, i := range req.GetPartitions() {
 		newTopic.Partitions[i] = f.CreatePartition(i, req.GetTopic())
 	}
 	//seralize Topic and put in db
