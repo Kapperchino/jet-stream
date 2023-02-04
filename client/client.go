@@ -90,7 +90,7 @@ func New(address string) (*JetClient, error) {
 				clusterClient: newClusterClient(con),
 				messageClient: newMessageClient(con),
 			}
-			shardClient.memberclients.Set(shardId, &memberClient)
+			shardClient.memberclients.Set(nodeId, &memberClient)
 		}
 	}
 	metaData := Meta{topics: haxmap.New[string, *TopicMeta]()}

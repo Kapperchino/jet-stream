@@ -13,7 +13,7 @@ import (
 
 // Define the suite, and absorb the built-in basic suite
 // functionality from testify - including assertion methods.
-type ClientTest struct {
+type ClientTestOneNodeCluster struct {
 	suite.Suite
 	client        *client.JetClient
 	address       [3]string
@@ -30,7 +30,7 @@ const (
 
 // Make sure that VariableThatShouldStartAtFive is set to five
 // before each test
-func (suite *ClientTest) SetupSuite() {
+func (suite *ClientTestOneNodeCluster) SetupSuite() {
 	suite.initFolders()
 	suite.address = [3]string{"localhost:8080", "localhost:8082", "localhost:8084"}
 	suite.gossipAddress = [3]string{"localhost:8081", "localhost:8083", "localhost:8085"}
@@ -51,13 +51,13 @@ func (suite *ClientTest) SetupSuite() {
 	time.Sleep(5 * time.Second)
 }
 
-func (suite *ClientTest) TearDownSuite() {
+func (suite *ClientTestOneNodeCluster) TearDownSuite() {
 	cleanup()
 }
 
 // All methods that begin with "Test" are run as tests within a
 // suite.
-func (suite *ClientTest) TestCreateTopic() {
+func (suite *ClientTestOneNodeCluster) TestCreateTopic() {
 	_, err := suite.client.CreateTopic("joe", 3)
 	assert.Nil(suite.T(), err)
 }
@@ -65,10 +65,10 @@ func (suite *ClientTest) TestCreateTopic() {
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestClient(t *testing.T) {
-	suite.Run(t, new(ClientTest))
+	suite.Run(t, new(ClientTestOneNodeCluster))
 }
 
-func (suite *ClientTest) initFolders() {
+func (suite *ClientTestOneNodeCluster) initFolders() {
 	if err := os.MkdirAll(raftDir+"/nodeA/", os.ModePerm); err != nil {
 		log.Fatal().Err(err)
 	}
@@ -77,7 +77,7 @@ func (suite *ClientTest) initFolders() {
 	}
 }
 
-func (suite *ClientTest) setupClient(address string) (*client.JetClient, error) {
+func (suite *ClientTestOneNodeCluster) setupClient(address string) (*client.JetClient, error) {
 	return client.New(address)
 }
 
