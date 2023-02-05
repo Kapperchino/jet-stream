@@ -4,11 +4,15 @@ import (
 	"github.com/Kapperchino/jet-cluster/proto"
 	"github.com/Kapperchino/jet/util"
 	"github.com/alphadose/haxmap"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 )
 
 type ClusterDelegate struct {
 	ClusterState *ClusterState
+}
+
+func (c ClusterDelegate) Logger() *zerolog.Logger {
+	return c.ClusterState.Logger
 }
 
 func (c ClusterDelegate) NodeMeta(limit int) []byte {
@@ -27,14 +31,14 @@ func (c ClusterDelegate) NodeMeta(limit int) []byte {
 	})
 	bytes, err := util.SerializeMessage(&res)
 	if err != nil {
-		log.Err(err)
+		c.Logger().Err(err)
 		return nil
 	}
 	return bytes
 }
 
 func (c ClusterDelegate) NotifyMsg(bytes []byte) {
-	log.Debug().Msgf("received %s", bytes)
+	c.Logger().Debug().Msgf("received %s", bytes)
 }
 
 func (c ClusterDelegate) GetBroadcasts(overhead, limit int) [][]byte {
@@ -57,18 +61,18 @@ func (c ClusterDelegate) LocalState(join bool) []byte {
 	})
 	bytes, err := util.SerializeMessage(&res)
 	if err != nil {
-		log.Err(err)
+		c.Logger().Err(err)
 		return nil
 	}
 	return bytes
 }
 
 func (c ClusterDelegate) MergeRemoteState(buf []byte, join bool) {
-	log.Debug().Msgf("remote state is %s, join: %s", buf, join)
+	c.Logger().Debug().Msgf("remote state is %s, join: %s", buf, join)
 	var meta proto.ShardInfo
 	err := util.DeserializeMessage(buf, &meta)
 	if err != nil {
-		log.Err(err).Msgf("Error deserializing message")
+		c.Logger().Err(err).Msgf("Error deserializing message")
 		return
 	}
 	//adding it to the cluster

@@ -129,7 +129,7 @@ func do() error {
 			if err != nil {
 				return err
 			}
-			v = protoreflect.ValueOfUint64(uint64(i))
+			v = protoreflect.ValueOfUint64(i)
 		default:
 			return fmt.Errorf("internal error: kind %s is not yet supported", f.Kind().String())
 		}

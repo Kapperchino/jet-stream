@@ -16,36 +16,12 @@ type Logger struct {
 	Level  zerolog.Level
 }
 
-type BadgerLogger struct {
-	Writer io.Writer
-	Logger zerolog.Logger
-	Level  zerolog.Level
-}
-
-func (l *BadgerLogger) Errorf(s string, i ...interface{}) {
-	l.Logger.Error().Msgf(s, i)
-}
-
-func (l *BadgerLogger) Warningf(s string, i ...interface{}) {
-	l.Logger.Warn().Msgf(s, i)
-}
-
-func (l *BadgerLogger) Infof(s string, i ...interface{}) {
-	l.Logger.Info().Msgf(s, i)
-}
-
-func (l *BadgerLogger) Debugf(s string, i ...interface{}) {
-	l.Logger.Debug().Msgf(s, i)
-}
-
-var Logging = createLogger()
-
 func (l *Logger) toStandardLogger() *log2.Logger {
 	logger := log2.New(l.Writer, "", 0)
 	return logger
 }
 
-func createLogger() *Logger {
+func CreateLogger() Logger {
 	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006/01/02 15:04:05"}
 	output.FormatLevel = func(i interface{}) string {
 		return strings.ToUpper(fmt.Sprintf("[%-4s]", i))
@@ -61,25 +37,16 @@ func createLogger() *Logger {
 	l.Logger = zerolog.New(l.Writer).With().Timestamp().Logger().Level(l.Level)
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	log.Logger = l.Logger
-	return &l
-}
-
-func CreateBadgerLogger() *log2.Logger {
-	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006/01/02 15:04:05"}
-	output.FormatLevel = func(i interface{}) string {
-		return strings.ToUpper(fmt.Sprintf("[%-4s]", i))
-	}
-	newLogger := NewStdLoggerWithOutput(output)
-	return newLogger
+	return l
 }
 
 func NewRaftLogger(output io.Writer) *zerolog.Logger {
-	newLogger := Logging.Logger.With().Logger().Output(output)
+	newLogger := log.Logger.With().Logger().Output(output)
 	return &newLogger
 }
 
 func NewStdLoggerWithOutput(output io.Writer) *log2.Logger {
-	newLogger := Logging.Logger.With().Logger().Output(output)
+	newLogger := log.Logger.With().Logger().Output(output)
 	stdLogger := log2.Logger{}
 	stdLogger.SetFlags(0)
 	stdLogger.SetOutput(newLogger)

@@ -4,7 +4,6 @@ import (
 	fsmPb "github.com/Kapperchino/jet-application/proto"
 	"github.com/Kapperchino/jet/util"
 	"github.com/hashicorp/raft"
-	"github.com/rs/zerolog/log"
 	"time"
 )
 
@@ -56,7 +55,7 @@ func onFailedHeartbeat(i *RpcInterface, update raft.FailedHeartbeatObservation) 
 		i.ClusterState.getMemberMap().Del(string(update.PeerID))
 		err = RemovePeer(i, string(update.PeerID))
 		if err != nil {
-			log.Err(err).Msgf("Error removing peer %s", update.PeerID)
+			i.Logger.Err(err).Msgf("Error removing peer %s", update.PeerID)
 			return
 		}
 	}
@@ -68,7 +67,7 @@ func onPeerUpdate(i *RpcInterface, update raft.PeerObservation) {
 		i.ClusterState.getMemberMap().Del(string(update.Peer.ID))
 		err := RemovePeer(i, string(update.Peer.ID))
 		if err != nil {
-			log.Err(err).Msgf("Error removing peer %s", update.Peer.ID)
+			i.Logger.Err(err).Msgf("Error removing peer %s", update.Peer.ID)
 			return
 		}
 		return
@@ -92,7 +91,7 @@ func onPeerUpdate(i *RpcInterface, update raft.PeerObservation) {
 	i.Logger.Info().Msgf("Replicating peer %s", update.Peer.ID)
 	err := ReplicatePeer(i, update)
 	if err != nil {
-		log.Err(err).Msgf("Error replicating peer %s", update.Peer.ID)
+		i.Logger.Err(err).Msgf("Error replicating peer %s", update.Peer.ID)
 		return
 	}
 	i.Logger.Info().Msgf("Peer %s is added", update.Peer.ID)
@@ -163,17 +162,17 @@ func ReplicatePeer(i *RpcInterface, update raft.PeerObservation) error {
 	val, _ := util.SerializeMessage(input)
 	res := i.Raft.Apply(val, time.Second)
 	if err := res.Error(); err != nil {
-		log.Err(err)
+		i.Logger.Err(err)
 		return err
 	}
 	err, isErr := res.Response().(error)
 	if isErr {
-		log.Err(err)
+		i.Logger.Err(err)
 		return err
 	}
 	_, isValid := res.Response().(*fsmPb.AddMemberResult)
 	if !isValid {
-		log.Err(err)
+		i.Logger.Err(err)
 		return err
 	}
 	return nil
@@ -182,24 +181,24 @@ func ReplicatePeer(i *RpcInterface, update raft.PeerObservation) error {
 func RemovePeer(i *RpcInterface, peerId string) error {
 	input := &fsmPb.WriteOperation{
 		Operation: &fsmPb.WriteOperation_RemoveMember{RemoveMember: &fsmPb.RemoveMember{
-			NodeId: string(peerId),
+			NodeId: peerId,
 		}},
 		Code: fsmPb.Operation_REMOVE_MEMBER,
 	}
 	val, _ := util.SerializeMessage(input)
 	res := i.Raft.Apply(val, time.Second)
 	if err := res.Error(); err != nil {
-		log.Err(err)
+		i.Logger.Err(err)
 		return err
 	}
 	err, isErr := res.Response().(error)
 	if isErr {
-		log.Err(err)
+		i.Logger.Err(err)
 		return err
 	}
 	_, isValid := res.Response().(*fsmPb.RemoveMemberResult)
 	if !isValid {
-		log.Err(err)
+		i.Logger.Err(err)
 		return err
 	}
 	return nil

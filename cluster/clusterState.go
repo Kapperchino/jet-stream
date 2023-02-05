@@ -3,12 +3,14 @@ package cluster
 import (
 	"github.com/alphadose/haxmap"
 	"github.com/hashicorp/raft"
+	"github.com/rs/zerolog"
 )
 
 type ClusterState struct {
 	ShardId       string
 	CurShardState *ShardState
 	ClusterInfo   *haxmap.Map[string, *ShardInfo]
+	Logger        *zerolog.Logger
 }
 
 type ShardState struct {

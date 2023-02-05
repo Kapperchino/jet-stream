@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"fmt"
 	"github.com/Kapperchino/jet/util"
 	"github.com/hashicorp/memberlist"
 	"github.com/rs/zerolog"
@@ -30,16 +31,19 @@ func NewMemberList(config *memberlist.Config, rootNode string) *memberlist.Membe
 	return list
 }
 
-func MakeConfig(name string, gossipAddress string, eventDelegate memberlist.EventDelegate, delegate memberlist.Delegate) *memberlist.Config {
+func MakeConfig(nodeName string, shardName string, gossipAddress string, eventDelegate memberlist.EventDelegate, delegate memberlist.Delegate) *memberlist.Config {
 	host, port, _ := net.SplitHostPort(gossipAddress)
 	portInt, _ := strconv.Atoi(port)
 	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006/01/02 15:04:05"}
 	output.FormatLevel = func(i interface{}) string {
-		return ""
+		return fmt.Sprintf("[%s]", nodeName)
+	}
+	output.FormatFieldName = func(i interface{}) string {
+		return fmt.Sprintf("%s:", i)
 	}
 	stdLogger := util.NewStdLoggerWithOutput(output)
 	return &memberlist.Config{
-		Name:                    name,
+		Name:                    shardName,
 		BindAddr:                host,
 		BindPort:                portInt,
 		AdvertiseAddr:           "127.0.0.1",

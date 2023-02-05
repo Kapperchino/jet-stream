@@ -6,7 +6,7 @@ import (
 	"github.com/Kapperchino/jet/util"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/google/uuid"
-	"github.com/rs/zerolog/log"
+	_ "github.com/rs/zerolog/log"
 )
 
 // CreateConsumerGroup write operation, done in fsm
@@ -33,12 +33,12 @@ func (f *NodeState) CreateConsumerGroup(req *pb.CreateConsumerGroup) (interface{
 		}
 		buf, err := util.SerializeMessage(group)
 		if err != nil {
-			log.Printf("error encoding consumer group, %s", err)
+			f.Logger.Printf("error encoding consumer group, %s", err)
 			return fmt.Errorf("error encoding Topic, %w", err)
 		}
 		err = tx.Set([]byte("ConsumerGroup-"+topic.Name+"-"+group.Id), buf)
 		if err != nil {
-			log.Printf("error putting items in bucket, %s", err)
+			f.Logger.Printf("error putting items in bucket, %s", err)
 			return fmt.Errorf("error putting items in bucket, %w", err)
 		}
 		response.Consumers = consumers
@@ -60,7 +60,7 @@ func (f *NodeState) Consume(req *pb.ConsumeRequest) (*pb.ConsumeResponse, error)
 	err := f.MessageStore.View(func(tx *badger.Txn) error {
 		group, err := f.getConsumerGroup(req.GetGroupId(), req.Topic)
 		if err != nil {
-			log.Err(err).Msgf("Error getting consumer group")
+			f.Logger.Err(err).Msgf("Error getting consumer group")
 			return err
 		}
 		opts := badger.DefaultIteratorOptions
@@ -207,7 +207,7 @@ func (f *NodeState) Ack(request *pb.Ack) (interface{}, error) {
 		consumerId := []byte("ConsumerGroup-" + request.Topic + "-" + group.Id)
 		err = tx.Set(consumerId, buf)
 		if err != nil {
-			log.Printf("error putting items in bucket, %s", err)
+			f.Logger.Printf("error putting items in bucket, %s", err)
 			return fmt.Errorf("error putting items in bucket, %w", err)
 		}
 		return nil

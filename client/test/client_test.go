@@ -1,11 +1,13 @@
 package test
 
 import (
+	pb "github.com/Kapperchino/jet-application/proto"
 	client "github.com/Kapperchino/jet-client"
 	"github.com/Kapperchino/jet/factory"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"math/rand"
 	"os"
 	"testing"
 	"time"
@@ -58,7 +60,26 @@ func (suite *ClientTestOneNodeCluster) TearDownSuite() {
 // All methods that begin with "Test" are run as tests within a
 // suite.
 func (suite *ClientTestOneNodeCluster) TestCreateTopic() {
-	_, err := suite.client.CreateTopic("joe", 3)
+	_, err := suite.client.CreateTopic("TestCreateTopic", 3)
+	assert.Nil(suite.T(), err)
+}
+
+func (suite *ClientTestOneNodeCluster) TestPublishMessage() {
+	const TOPIC = "TestPublishMessage"
+	_, err := suite.client.CreateTopic(TOPIC, 3)
+	assert.Nil(suite.T(), err)
+	var arr []*pb.KeyVal
+	token := make([]byte, 10*1024*1024)
+	rand.Read(token)
+	arr = append(arr, &pb.KeyVal{
+		Key: []byte("joe"),
+		Val: token,
+	})
+	for x := 0; x < 10; x++ {
+		res, err := publishMessages(suite.client, TOPIC, arr)
+		assert.Nil(suite.T(), err)
+		assert.NotNil(suite.T(), res)
+	}
 	assert.Nil(suite.T(), err)
 }
 
@@ -66,6 +87,10 @@ func (suite *ClientTestOneNodeCluster) TestCreateTopic() {
 // a normal test function and pass our suite to suite.Run
 func TestClient(t *testing.T) {
 	suite.Run(t, new(ClientTestOneNodeCluster))
+}
+
+func publishMessages(client *client.JetClient, topic string, messages []*pb.KeyVal) (*pb.PublishMessageResponse, error) {
+	return client.PublishMessage(messages, topic)
 }
 
 func (suite *ClientTestOneNodeCluster) initFolders() {

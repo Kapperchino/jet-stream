@@ -17,7 +17,7 @@ type RpcInterface struct {
 	pb.UnimplementedClusterMetaServiceServer
 }
 
-func InitClusterState(i *RpcInterface, nodeName string, address string, shardId string, bootstrap bool) *ClusterState {
+func InitClusterState(i *RpcInterface, nodeName string, address string, shardId string, bootstrap bool, logger *zerolog.Logger) *ClusterState {
 	leader := ""
 	if bootstrap {
 		leader = nodeName
@@ -37,6 +37,7 @@ func InitClusterState(i *RpcInterface, nodeName string, address string, shardId 
 				Address:  address,
 			},
 		},
+		Logger: logger,
 	}
 	clusterState.CurShardState.ShardInfo.MemberMap.Set(nodeName, MemberInfo{
 		NodeId:   nodeName,

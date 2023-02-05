@@ -5,7 +5,6 @@ import (
 	pb "github.com/Kapperchino/jet-application/proto"
 	"github.com/Kapperchino/jet/factory"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
-	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
@@ -32,10 +31,10 @@ func (suite *FsmTest) SetupSuite() {
 	initFolders()
 	suite.servers = make(chan *factory.Server, 5)
 	suite.myAddr = "localhost:8080"
-	log.Printf("Starting the server")
+	f.LoggerPrintf("Starting the server")
 	go factory.SetupServer(testData, raftDir, suite.myAddr, "nodeA", "localhost:8081", "", true, suite.servers)
 	time.Sleep(3 * time.Second)
-	log.Printf("Starting the client")
+	f.LoggerPrintf("Starting the client")
 	suite.client = suite.setupClient()
 }
 
@@ -44,7 +43,7 @@ func (suite *FsmTest) TearDownSuite() {
 }
 
 func (suite *FsmTest) Test_Publish() {
-	log.Printf("Creating topic")
+	f.LoggerPrintf("Creating topic")
 	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
 		Topic:      "Test_Publish",
 		Partitions: []uint64{0},
@@ -60,7 +59,7 @@ func (suite *FsmTest) Test_Publish() {
 	for x := 0; x < 10; x++ {
 		res, err := publishMessages(suite.client, "Test_Publish", arr, 0)
 		for _, message := range res.GetMessages() {
-			log.Info().Bytes("key", message.Key).Uint64("offset", message.Offset).Msgf("message")
+			f.LoggerInfo().Bytes("key", message.Key).Uint64("offset", message.Offset).Msgf("message")
 		}
 		assert.Nil(suite.T(), err)
 		assert.NotNil(suite.T(), res)
@@ -68,7 +67,7 @@ func (suite *FsmTest) Test_Publish() {
 }
 
 func (suite *FsmTest) Test_Publish_Two_Partitions() {
-	log.Printf("Creating topic")
+	f.LoggerPrintf("Creating topic")
 	_, err := suite.client.CreateTopic(context.Background(), &pb.CreateTopicRequest{
 		Topic:      "Test_Publish_Two_Partitions",
 		Partitions: []uint64{0, 1},
@@ -84,7 +83,7 @@ func (suite *FsmTest) Test_Publish_Two_Partitions() {
 	for x := 0; x < 10; x++ {
 		res, err := publishMessages(suite.client, "Test_Publish_Two_Partitions", arr, 0)
 		for _, message := range res.GetMessages() {
-			log.Info().Bytes("key", message.Key).Uint64("offset", message.Offset).Msgf("message")
+			f.LoggerInfo().Bytes("key", message.Key).Uint64("offset", message.Offset).Msgf("message")
 		}
 		assert.Nil(suite.T(), err)
 		assert.NotNil(suite.T(), res)
@@ -313,7 +312,7 @@ func (suite *FsmTest) setupClient() pb.MessageServiceClient {
 
 func initFolders() {
 	if err := os.MkdirAll(raftDir+"/nodeA/", os.ModePerm); err != nil {
-		log.Err(err)
+		f.LoggerErr(err)
 	}
 }
 

@@ -5,7 +5,6 @@ import (
 	pb "github.com/Kapperchino/jet-application/proto"
 	"github.com/Kapperchino/jet/util"
 	"github.com/dgraph-io/badger/v3"
-	"github.com/rs/zerolog/log"
 )
 
 func (f *NodeState) CreateTopic(req *pb.CreateTopic) (interface{}, error) {
@@ -31,7 +30,7 @@ func (f *NodeState) CreateTopic(req *pb.CreateTopic) (interface{}, error) {
 		if err != nil {
 			return err
 		}
-		log.Printf("Created Topic %s", req.GetTopic())
+		f.Logger.Printf("Created Topic %s with partitions %v", req.GetTopic(), req.GetPartitions())
 		return nil
 	})
 	if err != nil {
@@ -54,7 +53,7 @@ func (f *NodeState) getTopic(topicName string) (*pb.Topic, error) {
 		})
 		err = util.DeserializeMessage(valBytes, &curTopic)
 		if err != nil {
-			log.Err(err).Msgf("error deserializing topic")
+			f.Logger.Err(err).Msgf("error deserializing topic")
 			return err
 		}
 		return nil

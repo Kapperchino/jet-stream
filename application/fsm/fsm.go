@@ -6,7 +6,7 @@ import (
 	"github.com/Kapperchino/jet/util"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/hashicorp/raft"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -15,6 +15,7 @@ type NodeState struct {
 	MessageStore *badger.DB
 	HandlerMap   []func(f *NodeState, op *pb.WriteOperation, l *raft.Log) interface{}
 	ShardState   *cluster.ShardState
+	Logger       *zerolog.Logger
 }
 
 var _ raft.FSM = &NodeState{}
@@ -23,7 +24,7 @@ func (f *NodeState) Apply(l *raft.Log) interface{} {
 	operation := &pb.WriteOperation{}
 	err := util.DeserializeMessage(l.Data, operation)
 	if err != nil {
-		log.Error().Err(err)
+		f.Logger.Error().Err(err)
 		return err
 	}
 	return f.HandlerMap[operation.Code](f, operation, l)

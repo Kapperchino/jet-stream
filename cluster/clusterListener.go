@@ -2,19 +2,23 @@ package cluster
 
 import (
 	"github.com/hashicorp/memberlist"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 )
 
 type ClusterListener struct {
 	state *ClusterState
 }
 
+func (c ClusterListener) Logger() *zerolog.Logger {
+	return c.state.Logger
+}
+
 func (c ClusterListener) NotifyJoin(node *memberlist.Node) {
-	log.Info().Msgf("node %s has joined the cluster", node.Name)
+	c.Logger().Info().Msgf("node %s has joined the cluster", node.Name)
 }
 
 func (c ClusterListener) NotifyLeave(node *memberlist.Node) {
-	log.Warn().Msgf("Shard %s has left the cluster")
+	c.Logger().Warn().Msgf("Shard %s has left the cluster")
 	_, exist := c.state.ClusterInfo.Get(node.Name)
 	if !exist {
 		return

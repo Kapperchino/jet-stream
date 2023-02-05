@@ -20,10 +20,10 @@ func makeTestPair(ctx context.Context, t *testing.T) (raft.Transport, raft.Trans
 	t1Listen := bufconn.Listen(1024)
 	t2Listen := bufconn.Listen(1024)
 
-	t1 := transport.New(raft.ServerAddress("t1"), []grpc.DialOption{grpc.WithInsecure(), grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
+	t1 := transport.New("t1", []grpc.DialOption{grpc.WithInsecure(), grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
 		return t2Listen.Dial()
 	})})
-	t2 := transport.New(raft.ServerAddress("t2"), []grpc.DialOption{grpc.WithInsecure(), grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
+	t2 := transport.New("t2", []grpc.DialOption{grpc.WithInsecure(), grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
 		return t1Listen.Dial()
 	})})
 

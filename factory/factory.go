@@ -11,6 +11,7 @@ import (
 	clusterPb "github.com/Kapperchino/jet-cluster/proto"
 	"github.com/Kapperchino/jet-leader-rpc/leaderhealth"
 	transport "github.com/Kapperchino/jet-transport"
+	"github.com/Kapperchino/jet/config"
 	"github.com/Kapperchino/jet/util"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-uuid"
@@ -48,9 +49,12 @@ func NewRaft(myID, myAddress string, fsm raft.FSM, bootStrap bool, raftDir strin
 	output.FormatLevel = func(i interface{}) string {
 		return ""
 	}
+	output.FormatMessage = func(i interface{}) string {
+		return fmt.Sprintf("[%s] %s", myID, i)
+	}
 	c.Logger = hclog.New(&hclog.LoggerOptions{
 		Name:        "raft",
-		Level:       hclog.Debug,
+		Level:       hclog.LevelFromString(""),
 		DisableTime: true,
 		Output:      util.NewRaftLogger(output),
 	})
@@ -113,14 +117,23 @@ func SetupServer(badgerDir string, raftDir string, address string, nodeName stri
 		log.Fatal().Msgf("failed to listen: %v", err)
 	}
 
+	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006/01/02 15:04:05"}
+	output.FormatLevel = func(i interface{}) string {
+		return fmt.Sprintf("[%s] ", nodeName) + strings.ToUpper(fmt.Sprintf("[%-4s]", i))
+	}
+	output.FormatFieldName = func(i interface{}) string {
+		return fmt.Sprintf("%s:", i)
+	}
+
 	db, _ := NewBadger(badgerDir + nodeName + "/Meta")
 	messages, _ := NewBadger("./testData/badger/" + nodeName + "/Messages")
+	nodeLogger := log.Level(config.LOG_LEVEL).Output(output)
 	nodeState := &fsm.NodeState{
 		MetaStore:    db,
 		MessageStore: messages,
 		HandlerMap:   handlers.InitHandlers(),
+		Logger:       &nodeLogger,
 	}
-
 	r, tm, err := NewRaft(nodeName, address, nodeState, bootstrap, raftDir)
 	if err != nil {
 		log.Fatal().Msgf("failed to start raft: %v", err)
@@ -138,30 +151,17 @@ func SetupServer(badgerDir string, raftDir string, address string, nodeName stri
 		}
 		shardId = id
 	}
-	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006/01/02 15:04:05"}
-	output.FormatLevel = func(i interface{}) string {
-		return strings.ToUpper(fmt.Sprintf("[%-4s]", i))
-	}
-	output.FormatFieldName = func(i interface{}) string {
-		return fmt.Sprintf("%s:", i)
-	}
-	output.FormatFieldValue = func(i interface{}) string {
-		return strings.ToUpper(fmt.Sprintf("%s", i))
-	}
-	output.FormatMessage = func(i interface{}) string {
-		return fmt.Sprintf("[%s] %s", nodeName, i)
-	}
-	clusterLog := log.With().Logger().Output(output)
+	clusterLog := log.Level(config.LOG_LEVEL).Output(output)
 	clusterRpc := &cluster.RpcInterface{
 		ClusterState: nil,
 		Raft:         r,
 		Logger:       &clusterLog,
 	}
-	clusterRpc.ClusterState = cluster.InitClusterState(clusterRpc, nodeName, address, shardId, bootstrap)
+	clusterRpc.ClusterState = cluster.InitClusterState(clusterRpc, nodeName, address, shardId, bootstrap, &clusterLog)
 	var memberList *memberlist.Memberlist
 	if bootstrap {
 		memberListener := cluster.InitClusterListener(clusterRpc.ClusterState)
-		memberList = NewMemberList(MakeConfig(shardId, gossipAddress, memberListener, cluster.ClusterDelegate{
+		memberList = NewMemberList(MakeConfig(nodeName, shardId, gossipAddress, memberListener, cluster.ClusterDelegate{
 			ClusterState: clusterRpc.ClusterState,
 		}), rootNode)
 		clusterRpc.MemberList = memberList

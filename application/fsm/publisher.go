@@ -5,7 +5,6 @@ import (
 	pb "github.com/Kapperchino/jet-application/proto"
 	"github.com/Kapperchino/jet/util"
 	"github.com/dgraph-io/badger/v3"
-	"github.com/rs/zerolog/log"
 	"strconv"
 )
 
@@ -17,8 +16,8 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 	var res []*pb.Message
 	lastRaftIndex, err := f.getLastIndex(req.GetTopic(), int64(req.GetPartition()))
 	if err != nil {
-		log.Error().Msg("Cannot get the latest raftIndex")
-		log.Err(err)
+		f.Logger.Error().Msg("Cannot get the latest raftIndex")
+		f.Logger.Err(err)
 		return nil, err
 	}
 	//no op if messages has already been written
@@ -44,8 +43,8 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 			}
 			byteProto, err := util.SerializeMessage(newMsg)
 			if err != nil {
-				log.Error().Msg("Error seralizing")
-				log.Err(err)
+				f.Logger.Error().Msg("Error seralizing")
+				f.Logger.Err(err)
 				return err
 			}
 			msgKey := makeKey(req.Topic, req.Partition, offset)
@@ -59,10 +58,11 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 		return nil
 	})
 	if err != nil {
-		log.Error().Msg("Error Writing to topic")
-		log.Err(err)
+		f.Logger.Error().Msg("Error Writing to topic")
+		f.Logger.Err(err)
 		return nil, err
 	}
+	f.Logger.Debug().Msgf("Publish %v messaged to partition %v topic %s", len(req.Messages), req.Partition, req.Topic)
 	partition := curTopic.Partitions[req.Partition]
 	partition.Offset = newOffset
 	return res, nil
