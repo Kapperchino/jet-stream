@@ -116,18 +116,24 @@ func SetupServer(badgerDir string, raftDir string, address string, nodeName stri
 	if err != nil {
 		log.Fatal().Msgf("failed to listen: %v", err)
 	}
-
-	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006/01/02 15:04:05"}
-	output.FormatLevel = func(i interface{}) string {
-		return fmt.Sprintf("[%s] ", nodeName) + strings.ToUpper(fmt.Sprintf("[%-4s]", i))
+	defaultOutput := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006/01/02 15:04:05"}
+	defaultOutput.FormatLevel = func(i interface{}) string {
+		return strings.ToUpper(fmt.Sprintf("[%-4s]", i))
 	}
-	output.FormatFieldName = func(i interface{}) string {
+	defaultOutput.FormatFieldName = func(i interface{}) string {
 		return fmt.Sprintf("%s:", i)
 	}
-
+	log.Logger = log.Output(defaultOutput)
+	outputWithNode := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006/01/02 15:04:05"}
+	outputWithNode.FormatLevel = func(i interface{}) string {
+		return fmt.Sprintf("[%s] ", nodeName) + strings.ToUpper(fmt.Sprintf("[%-4s]", i))
+	}
+	outputWithNode.FormatFieldName = func(i interface{}) string {
+		return fmt.Sprintf("%s:", i)
+	}
 	db, _ := NewBadger(badgerDir + nodeName + "/Meta")
 	messages, _ := NewBadger("./testData/badger/" + nodeName + "/Messages")
-	nodeLogger := log.Level(config.LOG_LEVEL).Output(output)
+	nodeLogger := log.Level(config.LOG_LEVEL).Output(outputWithNode)
 	nodeState := &fsm.NodeState{
 		MetaStore:    db,
 		MessageStore: messages,
@@ -151,7 +157,7 @@ func SetupServer(badgerDir string, raftDir string, address string, nodeName stri
 		}
 		shardId = id
 	}
-	clusterLog := log.Level(config.LOG_LEVEL).Output(output)
+	clusterLog := log.Level(config.LOG_LEVEL).Output(outputWithNode)
 	clusterRpc := &cluster.RpcInterface{
 		ClusterState: nil,
 		Raft:         r,
