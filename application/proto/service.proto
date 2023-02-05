@@ -23,12 +23,13 @@ message GetConsumerGroupsResponse {
 
 message CreateConsumerGroupRequest{
   string topic = 1;
+  string id = 2;
 }
 
 //uuid for consumer group id
 message CreateConsumerGroupResponse {
   string id = 1;
-  repeated Consumer consumers = 2;
+  ConsumerGroup group = 2;
 }
 
 message GetMetaRequest {
@@ -95,11 +96,6 @@ message CreateConsumerRequest {
 message CreateConsumerResponse {
   string consumerId = 1;
   uint64 lastIndex = 2;
-}
-
-message ConsumeFromGroupRequest {
-  string topic = 1;
-  string id = 2;
 }
 
 message ConsumeRequest {
@@ -190,6 +186,7 @@ message AckResult{
 
 message CreateConsumerGroup{
   string topic = 1;
+  string id = 2;
 }
 
 message CreateConsumerGroupResult{

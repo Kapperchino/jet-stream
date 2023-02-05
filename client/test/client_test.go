@@ -68,19 +68,45 @@ func (suite *ClientTestOneNodeCluster) TestPublishMessage() {
 	const TOPIC = "TestPublishMessage"
 	_, err := suite.client.CreateTopic(TOPIC, 3)
 	assert.Nil(suite.T(), err)
-	var arr []*pb.KeyVal
 	token := make([]byte, 10*1024*1024)
 	rand.Read(token)
-	arr = append(arr, &pb.KeyVal{
-		Key: []byte("joe"),
-		Val: token,
-	})
 	for x := 0; x < 10; x++ {
+		key := make([]byte, 10*1024*1024)
+		rand.Read(key)
+		arr := []*pb.KeyVal{{
+			Key: key,
+			Val: token,
+		}}
 		res, err := publishMessages(suite.client, TOPIC, arr)
 		assert.Nil(suite.T(), err)
 		assert.NotNil(suite.T(), res)
 	}
 	assert.Nil(suite.T(), err)
+}
+
+func (suite *ClientTestOneNodeCluster) TestConsumeMessage() {
+	const TOPIC = "TestConsumeMessage"
+	_, err := suite.client.CreateTopic(TOPIC, 3)
+	assert.Nil(suite.T(), err)
+	token := make([]byte, 10*1024*1024)
+	rand.Read(token)
+	for x := 0; x < 10; x++ {
+		key := make([]byte, 10*1024*1024)
+		rand.Read(key)
+		arr := []*pb.KeyVal{{
+			Key: key,
+			Val: token,
+		}}
+		res, err := publishMessages(suite.client, TOPIC, arr)
+		assert.Nil(suite.T(), err)
+		assert.NotNil(suite.T(), res)
+	}
+	assert.Nil(suite.T(), err)
+	id, err := suite.client.CreateConsumerGroup(TOPIC)
+	assert.Nil(suite.T(), err)
+	message, err := suite.client.ConsumeMessage(TOPIC, id.ConsumerId)
+	assert.Nil(suite.T(), err)
+	assert.Equal(suite.T(), 10, len(message.Messages))
 }
 
 // In order for 'go test' to run this suite, we need to create

@@ -172,6 +172,7 @@ func CreateConsumerGroupInternal(r RpcInterface, req *pb.CreateConsumerGroupRequ
 		Operation: &pb.WriteOperation_CreateConsumerGroup{
 			CreateConsumerGroup: &pb.CreateConsumerGroup{
 				Topic: req.Topic,
+				Id:    req.Id,
 			},
 		},
 		Code: pb.Operation_CREATE_CONSUMER_GROUP,

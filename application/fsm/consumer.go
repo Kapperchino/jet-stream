@@ -16,20 +16,18 @@ func (f *NodeState) CreateConsumerGroup(req *pb.CreateConsumerGroup) (interface{
 		return nil, err
 	}
 	response := new(pb.CreateConsumerGroupResponse)
-	consumers := make([]*pb.Consumer, len(topic.Partitions))
 	err = f.MetaStore.Update(func(tx *badger.Txn) error {
 		group := &pb.ConsumerGroup{
-			Id:        uuid.NewString(),
+			Id:        req.Id,
 			Consumers: make(map[string]*pb.Consumer),
 		}
-		for num, partition := range topic.Partitions {
+		for num, _ := range topic.Partitions {
 			consumer := &pb.Consumer{
 				Id:        uuid.NewString(),
 				Partition: num,
 				Offset:    0,
 			}
-			group.Consumers[uuid.NewString()] = consumer
-			consumers[partition.Num] = consumer
+			group.Consumers[consumer.Id] = consumer
 		}
 		buf, err := util.SerializeMessage(group)
 		if err != nil {
@@ -41,7 +39,7 @@ func (f *NodeState) CreateConsumerGroup(req *pb.CreateConsumerGroup) (interface{
 			f.Logger.Printf("error putting items in bucket, %s", err)
 			return fmt.Errorf("error putting items in bucket, %w", err)
 		}
-		response.Consumers = consumers
+		response.Group = group
 		response.Id = group.Id
 		return nil
 	})

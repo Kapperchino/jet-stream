@@ -18,8 +18,13 @@ type JetClient struct {
 	metaData     *Meta
 }
 
+type ConsumerGroup struct {
+	group *proto.ConsumerGroup
+}
+
 type Meta struct {
-	topics *haxmap.Map[string, *TopicMeta]
+	topics         *haxmap.Map[string, *TopicMeta]
+	consumerGroups *haxmap.Map[string, *ConsumerGroup]
 }
 
 type TopicMeta struct {
@@ -91,7 +96,7 @@ func New(address string) (*JetClient, error) {
 			shardClient.memberclients.Set(nodeId, &memberClient)
 		}
 	}
-	metaData := Meta{topics: haxmap.New[string, *TopicMeta]()}
+	metaData := Meta{topics: haxmap.New[string, *TopicMeta](), consumerGroups: haxmap.New[string, *ConsumerGroup]()}
 	shardClients.ForEach(func(shardId string, client *ShardClient) bool {
 		meta, err := client.GetNextMember().messageClient.GetMeta(ctx, &proto.GetMetaRequest{})
 		if err != nil {
@@ -118,6 +123,16 @@ func New(address string) (*JetClient, error) {
 				partitions.Set(num, partitionMeta)
 				client.partitions.Set(num, partitionMeta)
 			}
+		}
+
+		for id, group := range meta.ConsumerGroups {
+			var partitions []uint64
+			for _, consumer := range group.Consumers {
+				partitions = append(partitions, consumer.Partition)
+			}
+			metaData.consumerGroups.Set(id, &ConsumerGroup{
+				group: group,
+			})
 		}
 		return true
 	},
