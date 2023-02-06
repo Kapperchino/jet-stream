@@ -50,7 +50,7 @@ func (j *JetClient) CreateConsumerGroup(topicName string) (*proto.CreateConsumer
 }
 
 // ConsumeMessage need to check if the consumer is created, if true then find
-func (j *JetClient) ConsumeMessage(topicName string, id string) (*proto.ConsumeResponse, error) {
+func (j *JetClient) ConsumeMessage(topicName string, id string) ([]*proto.Message, error) {
 	_, exist := j.metaData.consumerGroups.Get(id)
 	if !exist {
 		return nil, errors.New("group does not exist")
@@ -67,10 +67,7 @@ func (j *JetClient) ConsumeMessage(topicName string, id string) (*proto.ConsumeR
 	var curErr error
 	partitionMap := map[uint64]uint64{}
 	var clients []*ShardClient
-	combinedRes := &proto.ConsumeResponse{
-		Messages:  []*proto.Message{},
-		LastIndex: 0,
-	}
+	var combinedRes []*proto.Message
 	slice := partitionSet.ToSlice()
 	for _, s := range slice {
 		client, exist := j.shardClients.Get(s)
@@ -83,16 +80,25 @@ func (j *JetClient) ConsumeMessage(topicName string, id string) (*proto.ConsumeR
 			Topic:   topicName,
 			GroupId: id,
 		})
+		if err != nil {
+			log.Err(err).Stack().Msgf("Error consuming from group %s", id)
+			return nil, err
+		}
 		if len(res.Messages) == 0 {
 			continue
 		}
-		lastMsg := res.Messages[len(res.Messages)-1]
-		partitionMap[lastMsg.Partition] = lastMsg.Offset
+		for p, messages := range res.Messages {
+			if messages.Messages == nil {
+				continue
+			}
+			lastMsg := messages.Messages[len(messages.Messages)-1]
+			partitionMap[p] = lastMsg.Offset
+			combinedRes = append(combinedRes, messages.Messages...)
+		}
 		if err != nil {
 			curErr = err
 			return nil, curErr
 		}
-		combinedRes.Messages = append(combinedRes.Messages, res.Messages...)
 	}
 	//ack everything
 	for _, client := range clients {

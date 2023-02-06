@@ -2,12 +2,11 @@ package fsm
 
 import (
 	"github.com/Kapperchino/jet/util"
-	"strconv"
 )
 
 func makePrefix(topic string, partition uint64) []byte {
-	prefix := topic + "-" + strconv.FormatUint(partition, 10)
-	return []byte(prefix)
+	prefix := append([]byte(topic+"-"), util.ULongToBytes(partition)...)
+	return prefix
 }
 
 func makeKey(topic string, partition uint64, offset uint64) []byte {

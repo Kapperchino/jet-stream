@@ -86,11 +86,11 @@ func (suite *ClientTestOneNodeCluster) TestPublishMessage() {
 
 func (suite *ClientTestOneNodeCluster) TestConsumeMessage() {
 	const TOPIC = "TestConsumeMessage"
-	_, err := suite.client.CreateTopic(TOPIC, 3)
+	_, err := suite.client.CreateTopic(TOPIC, 20)
 	assert.Nil(suite.T(), err)
 	token := make([]byte, 10*1024*1024)
 	rand.Read(token)
-	for x := 0; x < 10; x++ {
+	for x := 0; x < 100; x++ {
 		key := make([]byte, 10*1024*1024)
 		rand.Read(key)
 		arr := []*pb.KeyVal{{
@@ -104,9 +104,12 @@ func (suite *ClientTestOneNodeCluster) TestConsumeMessage() {
 	assert.Nil(suite.T(), err)
 	id, err := suite.client.CreateConsumerGroup(TOPIC)
 	assert.Nil(suite.T(), err)
-	message, err := suite.client.ConsumeMessage(TOPIC, id.Id)
+	messages, err := suite.client.ConsumeMessage(TOPIC, id.Id)
 	assert.Nil(suite.T(), err)
-	assert.Equal(suite.T(), 10, len(message.Messages))
+	assert.Equal(suite.T(), 100, len(messages))
+	messages, err = suite.client.ConsumeMessage(TOPIC, id.Id)
+	assert.Nil(suite.T(), err)
+	assert.Equal(suite.T(), 0, len(messages))
 }
 
 // In order for 'go test' to run this suite, we need to create

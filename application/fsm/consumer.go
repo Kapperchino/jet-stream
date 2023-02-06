@@ -44,6 +44,7 @@ func (f *NodeState) CreateConsumerGroup(req *pb.CreateConsumerGroup) (interface{
 		return nil
 	})
 	if err != nil {
+		f.Logger.Err(err).Stack().Msgf("error with local store")
 		return nil, fmt.Errorf("error with local store %w", err)
 	}
 	f.Logger.Info().Msgf("Created a consumer group with topic %s id %s", req.Topic, req.Id)
@@ -52,8 +53,9 @@ func (f *NodeState) CreateConsumerGroup(req *pb.CreateConsumerGroup) (interface{
 
 // Consume operation, should be done in replicas and not in fsm
 func (f *NodeState) Consume(req *pb.ConsumeRequest) (*pb.ConsumeResponse, error) {
+	totalSum := uint64(0)
 	res := pb.ConsumeResponse{
-		Messages:  make([]*pb.Message, 0),
+		Messages:  map[uint64]*pb.Messages{},
 		LastIndex: 0,
 	}
 	err := f.MessageStore.View(func(tx *badger.Txn) error {
@@ -88,14 +90,27 @@ func (f *NodeState) Consume(req *pb.ConsumeRequest) (*pb.ConsumeResponse, error)
 					return err
 				}
 			}
-			res.Messages = append(res.Messages, buf...)
+			if err != nil {
+				return err
+			}
+			resMessages := res.Messages[val.Partition]
+			if resMessages == nil {
+				resMessages = &pb.Messages{Messages: []*pb.Message{}}
+				res.Messages[val.Partition] = resMessages
+			}
+			resList := &resMessages.Messages
+			*resList = append(*resList, buf...)
+			totalSum += uint64(len(buf))
 		}
 		return nil
 	})
 	if err != nil {
+		f.Logger.Err(err).Stack().Msgf("Error with local store")
 		return nil, fmt.Errorf("error with local store %w", err)
 	}
-	f.Logger.Info().Msgf("Consumed %v messages", len(res.Messages))
+	if totalSum > 0 {
+		f.Logger.Info().Msgf("Consumed %v messages", totalSum)
+	}
 	return &res, nil
 }
 

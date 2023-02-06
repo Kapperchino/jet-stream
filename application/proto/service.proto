@@ -104,8 +104,12 @@ message ConsumeRequest {
 }
 
 message ConsumeResponse {
-  repeated Message messages = 1;
+  map<uint64, Messages> messages = 1;
   uint64 lastIndex = 2;
+}
+
+message Messages {
+  repeated Message messages = 1;
 }
 
 message Message {
