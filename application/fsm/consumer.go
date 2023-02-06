@@ -46,6 +46,7 @@ func (f *NodeState) CreateConsumerGroup(req *pb.CreateConsumerGroup) (interface{
 	if err != nil {
 		return nil, fmt.Errorf("error with local store %w", err)
 	}
+	f.Logger.Info().Msgf("Created a consumer group with topic %s id %s", req.Topic, req.Id)
 	return response, nil
 }
 
@@ -94,6 +95,7 @@ func (f *NodeState) Consume(req *pb.ConsumeRequest) (*pb.ConsumeResponse, error)
 	if err != nil {
 		return nil, fmt.Errorf("error with local store %w", err)
 	}
+	f.Logger.Info().Msgf("Consumed %v messages", len(res.Messages))
 	return &res, nil
 }
 
@@ -195,7 +197,10 @@ func (f *NodeState) Ack(request *pb.Ack) (interface{}, error) {
 		partitionConsumer[consumer.Partition] = consumer
 	}
 	for partition, offset := range request.Offsets {
-		partitionConsumer[partition].Offset = offset
+		item := partitionConsumer[partition]
+		if item != nil {
+			item.Offset = offset
+		}
 	}
 	err = f.MetaStore.Update(func(tx *badger.Txn) error {
 		buf, err := util.SerializeMessage(group)

@@ -104,7 +104,7 @@ func (suite *ClientTestOneNodeCluster) TestConsumeMessage() {
 	assert.Nil(suite.T(), err)
 	id, err := suite.client.CreateConsumerGroup(TOPIC)
 	assert.Nil(suite.T(), err)
-	message, err := suite.client.ConsumeMessage(TOPIC, id.ConsumerId)
+	message, err := suite.client.ConsumeMessage(TOPIC, id.Id)
 	assert.Nil(suite.T(), err)
 	assert.Equal(suite.T(), 10, len(message.Messages))
 }
