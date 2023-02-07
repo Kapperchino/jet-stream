@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"github.com/Kapperchino/jet-application/fsm"
-	pb "github.com/Kapperchino/jet-application/proto"
+	pb "github.com/Kapperchino/jet-application/proto/proto"
 	"github.com/hashicorp/raft"
 )
 

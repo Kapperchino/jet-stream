@@ -2,7 +2,7 @@ package test
 
 import (
 	"context"
-	pb "github.com/Kapperchino/jet-application/proto"
+	pb "github.com/Kapperchino/jet-application/proto/proto"
 	"github.com/Kapperchino/jet/factory"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/rs/zerolog/log"
@@ -135,13 +135,13 @@ func (suite *FsmTest) Test_Consume_Ack() {
 	msgs, err := consumeMessages(suite.client, TOPIC, res.Id)
 	assert.Nil(suite.T(), err)
 	for x := uint64(1); x <= 25; x++ {
-		assert.Equal(suite.T(), x, msgs.Messages[x-1].Offset)
+		assert.Equal(suite.T(), x, msgs.Messages[0].Messages[x-1].Offset)
 	}
 	_, err = ack(suite.client, map[uint64]uint64{0: 25}, res.Id, TOPIC)
 	assert.Nil(suite.T(), err)
 	msgs, err = consumeMessages(suite.client, TOPIC, res.Id)
 	assert.Nil(suite.T(), err)
-	assert.Equal(suite.T(), 0, len(msgs.Messages))
+	assert.Equal(suite.T(), 0, len(msgs.Messages[0].Messages))
 }
 
 // should have the same messages because of no ack, two consume calls should result in the same offsets
@@ -167,7 +167,7 @@ func (suite *FsmTest) Test_Consume_No_Ack() {
 	assert.Nil(suite.T(), err)
 	msgs, err := consumeMessages(suite.client, TOPIC, res.Id)
 	for x := uint64(1); x <= 10; x++ {
-		assert.Equal(suite.T(), x, msgs.Messages[x-1].Offset)
+		assert.Equal(suite.T(), x, msgs.Messages[0].Messages[x-1].Offset)
 	}
 }
 
@@ -196,23 +196,14 @@ func (suite *FsmTest) Test_Consume_Ack_Two_Partitions() {
 	assert.Nil(suite.T(), err)
 	msgs, err := consumeMessages(suite.client, TOPIC, res.Id)
 	assert.Nil(suite.T(), err)
-	partCount := []int{0, 0}
-
-	for x := uint64(1); x <= 25; x++ {
-		partCount[msgs.Messages[x-1].Partition]++
-		assert.Equal(suite.T(), x, msgs.Messages[x-1].Offset)
-	}
-	for x := uint64(26); x <= 50; x++ {
-		partCount[msgs.Messages[x-1].Partition]++
-		assert.Equal(suite.T(), x-25, msgs.Messages[x-1].Offset)
-	}
-	assert.Equal(suite.T(), 25, partCount[0])
-	assert.Equal(suite.T(), 25, partCount[1])
+	assert.Equal(suite.T(), 25, len(msgs.Messages[0].Messages))
+	assert.Equal(suite.T(), 25, len(msgs.Messages[1].Messages))
 	_, err = ack(suite.client, map[uint64]uint64{0: 25, 1: 25}, res.Id, TOPIC)
 	assert.Nil(suite.T(), err)
 	msgs, err = consumeMessages(suite.client, TOPIC, res.Id)
 	assert.Nil(suite.T(), err)
-	assert.Equal(suite.T(), 0, len(msgs.Messages))
+	assert.Equal(suite.T(), 0, len(msgs.Messages[0].Messages))
+	assert.Equal(suite.T(), 0, len(msgs.Messages[1].Messages))
 }
 
 func (suite *FsmTest) Test_GetConsumerGroups() {

@@ -8,7 +8,7 @@ require (
 	github.com/hashicorp/memberlist v0.5.0
 	github.com/hashicorp/raft v1.3.10
 	github.com/rs/zerolog v1.28.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	google.golang.org/grpc v1.51.0
 	google.golang.org/protobuf v1.28.1
 )

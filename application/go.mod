@@ -9,8 +9,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/hashicorp/raft v1.3.10
 	github.com/rs/zerolog v1.28.0
-	github.com/spaolacci/murmur3 v1.1.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	google.golang.org/grpc v1.51.0
 	google.golang.org/protobuf v1.28.1
 )

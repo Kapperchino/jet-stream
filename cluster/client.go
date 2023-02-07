@@ -1,7 +1,7 @@
 package cluster
 
 import (
-	clusterPb "github.com/Kapperchino/jet-cluster/proto"
+	clusterPb "github.com/Kapperchino/jet-cluster/proto/proto"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"

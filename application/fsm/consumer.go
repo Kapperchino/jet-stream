@@ -2,7 +2,7 @@ package fsm
 
 import (
 	"fmt"
-	pb "github.com/Kapperchino/jet-application/proto"
+	pb "github.com/Kapperchino/jet-application/proto/proto"
 	"github.com/Kapperchino/jet/util"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/google/uuid"

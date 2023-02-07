@@ -3,7 +3,7 @@ package client
 import (
 	"context"
 	"errors"
-	"github.com/Kapperchino/jet-application/proto"
+	"github.com/Kapperchino/jet-application/proto/proto"
 	"strconv"
 )
 

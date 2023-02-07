@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	pb "github.com/Kapperchino/jet-admin/proto"
+	pb "github.com/Kapperchino/jet-admin/proto/proto"
 	"github.com/hashicorp/raft"
 	"google.golang.org/grpc"
 )

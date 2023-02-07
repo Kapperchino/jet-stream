@@ -3,7 +3,7 @@ package client
 import (
 	"context"
 	"errors"
-	"github.com/Kapperchino/jet-application/proto"
+	"github.com/Kapperchino/jet-application/proto/proto"
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"

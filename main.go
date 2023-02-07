@@ -3,7 +3,10 @@ package main
 import (
 	"flag"
 	"github.com/Kapperchino/jet/factory"
+	"github.com/planetscale/vtprotobuf/codec/grpc"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/grpc/encoding"
+	_ "google.golang.org/grpc/encoding/proto"
 )
 
 var (
@@ -19,9 +22,9 @@ var (
 
 func main() {
 	flag.Parse()
-
 	if *raftId == "" {
 		log.Fatal().Msg("Cannot have null raftid")
 	}
+	encoding.RegisterCodec(grpc.Codec{})
 	factory.SetupServer(*dataDir, *raftDir, *myAddr, *raftId, *gossipAddress, *rootNode, *raftBootstrap, nil)
 }

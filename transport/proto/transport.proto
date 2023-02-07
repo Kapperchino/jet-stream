@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "github.com/Jille/raft-grpc-transport/proto";
+option go_package = "./proto";
 import "google/protobuf/timestamp.proto";
 
 service RaftTransport {

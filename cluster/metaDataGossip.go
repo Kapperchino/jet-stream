@@ -1,7 +1,7 @@
 package cluster
 
 import (
-	"github.com/Kapperchino/jet-cluster/proto"
+	"github.com/Kapperchino/jet-cluster/proto/proto"
 	"github.com/Kapperchino/jet/util"
 	"github.com/alphadose/haxmap"
 	"github.com/rs/zerolog"

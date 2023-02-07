@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	pb "github.com/Kapperchino/jet-transport/proto"
+	pb "github.com/Kapperchino/jet-transport/proto/proto"
 	"github.com/hashicorp/raft"
 	"google.golang.org/grpc"
 )

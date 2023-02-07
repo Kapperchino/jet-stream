@@ -1,7 +1,7 @@
 package fsm
 
 import (
-	pb "github.com/Kapperchino/jet-application/proto"
+	pb "github.com/Kapperchino/jet-application/proto/proto"
 	cluster "github.com/Kapperchino/jet-cluster"
 	"github.com/Kapperchino/jet/util"
 	"github.com/dgraph-io/badger/v3"

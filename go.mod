@@ -4,7 +4,9 @@ go 1.19
 
 require (
 	github.com/Kapperchino/jet/factory v0.0.0-20230122062940-fb9c7e744c6b
+	github.com/planetscale/vtprotobuf v0.4.0
 	github.com/rs/zerolog v1.28.0
+	google.golang.org/grpc v1.51.0
 )
 
 require (
@@ -12,8 +14,6 @@ require (
 	github.com/Kapperchino/jet/util v0.0.0-20230122062940-fb9c7e744c6b // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
-	github.com/buraksezer/consistent v0.10.0 // indirect
-	github.com/deckarep/golang-set/v2 v2.1.0 // indirect
 	github.com/fatih/color v1.12.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/btree v1.1.2 // indirect
@@ -40,6 +40,5 @@ require (
 	golang.org/x/text v0.6.0 // indirect
 	golang.org/x/tools v0.5.0 // indirect
 	google.golang.org/genproto v0.0.0-20210903162649-d08c68adba83 // indirect
-	google.golang.org/grpc v1.51.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 )

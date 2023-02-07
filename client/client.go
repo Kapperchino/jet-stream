@@ -2,8 +2,8 @@ package client
 
 import (
 	"context"
-	"github.com/Kapperchino/jet-application/proto"
-	clusterPb "github.com/Kapperchino/jet-cluster/proto"
+	proto "github.com/Kapperchino/jet-application/proto/generated"
+	clusterPb "github.com/Kapperchino/jet-cluster/proto/proto"
 	"github.com/alphadose/haxmap"
 	"github.com/buraksezer/consistent"
 	"github.com/cespare/xxhash/v2"

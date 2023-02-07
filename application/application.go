@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/Kapperchino/jet-application/fsm"
-	pb "github.com/Kapperchino/jet-application/proto"
+	pb "github.com/Kapperchino/jet-application/proto/proto"
 	"github.com/Kapperchino/jet-leader-rpc/rafterrors"
 	"github.com/Kapperchino/jet/util"
 	"github.com/hashicorp/raft"
