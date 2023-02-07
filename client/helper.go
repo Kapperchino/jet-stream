@@ -35,7 +35,7 @@ func newClientConnection(address string) (*grpc.ClientConn, error) {
 		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(100 * time.Millisecond)),
 		grpc_retry.WithMax(5),
 	}
-	maxSize := 1 * 1024 * 1024 * 1024
+	maxSize := 5 * 1024 * 1024 * 1024
 	return grpc.Dial(address,
 		grpc.WithDefaultServiceConfig(serviceConfig), grpc.WithInsecure(),
 		grpc.WithDefaultCallOptions(grpc.WaitForReady(false),

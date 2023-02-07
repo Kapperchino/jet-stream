@@ -86,7 +86,7 @@ func (suite *ClientTestOneNodeCluster) TestPublishMessage() {
 
 func (suite *ClientTestOneNodeCluster) TestConsumeMessage() {
 	const TOPIC = "TestConsumeMessage"
-	_, err := suite.client.CreateTopic(TOPIC, 20)
+	_, err := suite.client.CreateTopic(TOPIC, 5)
 	assert.Nil(suite.T(), err)
 	token := make([]byte, 10*1024*1024)
 	rand.Read(token)

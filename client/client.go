@@ -2,7 +2,7 @@ package client
 
 import (
 	"context"
-	proto "github.com/Kapperchino/jet-application/proto/generated"
+	proto "github.com/Kapperchino/jet-application/proto/proto"
 	clusterPb "github.com/Kapperchino/jet-cluster/proto/proto"
 	"github.com/alphadose/haxmap"
 	"github.com/buraksezer/consistent"

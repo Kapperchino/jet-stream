@@ -7,6 +7,7 @@ import (
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 )
 
 // CreateConsumerGroup creates multiple consumers on each shard that contains the partitions of the topic, stores
@@ -69,6 +70,8 @@ func (j *JetClient) ConsumeMessage(topicName string, id string) ([]*proto.Messag
 	var clients []*ShardClient
 	var combinedRes []*proto.Message
 	slice := partitionSet.ToSlice()
+	consumeGroup, _ := errgroup.WithContext(context.Background())
+	resChannel := make(chan *proto.ConsumeResponse, len(slice))
 	for _, s := range slice {
 		client, exist := j.shardClients.Get(s)
 		clients = append(clients, client)
@@ -76,14 +79,18 @@ func (j *JetClient) ConsumeMessage(topicName string, id string) ([]*proto.Messag
 			curErr = errors.New("shard needs to be in the meta")
 			return nil, curErr
 		}
-		res, err := client.GetNextMember().messageClient.Consume(context.Background(), &proto.ConsumeRequest{
-			Topic:   topicName,
-			GroupId: id,
+		curClient := client.GetNextMember().messageClient
+		consumeGroup.Go(func() error {
+			return ConsumeMessages(curClient, topicName, id, resChannel)
 		})
-		if err != nil {
-			log.Err(err).Stack().Msgf("Error consuming from group %s", id)
-			return nil, err
-		}
+	}
+	err := consumeGroup.Wait()
+	close(resChannel)
+	if err != nil {
+		log.Err(err).Stack().Msgf("Error consuming from group %s", id)
+		return nil, err
+	}
+	for res := range resChannel {
 		if len(res.Messages) == 0 {
 			continue
 		}
@@ -95,21 +102,52 @@ func (j *JetClient) ConsumeMessage(topicName string, id string) ([]*proto.Messag
 			partitionMap[p] = lastMsg.Offset
 			combinedRes = append(combinedRes, messages.Messages...)
 		}
-		if err != nil {
-			curErr = err
-			return nil, curErr
-		}
 	}
+
+	ackGroup, _ := errgroup.WithContext(context.Background())
+	ackChannel := make(chan *proto.AckConsumeResponse, len(slice))
 	//ack everything
 	for _, client := range clients {
-		_, err := client.GetLeader().messageClient.AckConsume(context.Background(), &proto.AckConsumeRequest{
-			Offsets: partitionMap,
-			GroupId: id,
-			Topic:   topicName,
+		client := client.GetLeader().messageClient
+		ackGroup.Go(func() error {
+			return AckMessages(client, topicName, id, partitionMap, ackChannel)
 		})
 		if err != nil {
 			return nil, err
 		}
 	}
+	err = ackGroup.Wait()
+	close(ackChannel)
+	if err != nil {
+		log.Err(err).Stack().Msgf("Error consuming from group %s", id)
+		return nil, err
+	}
 	return combinedRes, nil
+}
+
+func ConsumeMessages(client proto.MessageServiceClient, topicName string, id string, channel chan *proto.ConsumeResponse) error {
+	res, err := client.Consume(context.Background(), &proto.ConsumeRequest{
+		Topic:   topicName,
+		GroupId: id,
+	})
+	if err != nil {
+		log.Err(err).Stack().Msgf("Error consuming from group %s", id)
+		return err
+	}
+	channel <- res
+	return nil
+}
+
+func AckMessages(client proto.MessageServiceClient, topicName string, id string, partitionMap map[uint64]uint64, channel chan *proto.AckConsumeResponse) error {
+	res, err := client.AckConsume(context.Background(), &proto.AckConsumeRequest{
+		Offsets: partitionMap,
+		GroupId: id,
+		Topic:   topicName,
+	})
+	if err != nil {
+		log.Err(err).Stack().Msgf("Error consuming from group %s", id)
+		return err
+	}
+	channel <- res
+	return nil
 }

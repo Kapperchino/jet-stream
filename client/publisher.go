@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"github.com/Kapperchino/jet-application/proto/proto"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 	"strconv"
 )
 
@@ -23,26 +25,41 @@ func (j *JetClient) PublishMessage(messages []*proto.KeyVal, topic string) (*pro
 		}
 		bucket[partition] = append(bucket[partition], message)
 	}
-	var resList []*proto.PublishMessageResponse
+	publishGroup, _ := errgroup.WithContext(context.Background())
+	resChannel := make(chan *proto.PublishMessageResponse, len(bucket))
 	for partition, list := range bucket {
 		meta, _ := meta.partitions.Get(partition)
 		client, _ := j.shardClients.Get(meta.shardId)
-		res, err := client.GetLeader().messageClient.PublishMessages(context.Background(), &proto.PublishMessageRequest{
-			Topic:     topic,
-			Partition: partition,
-			Messages:  list,
+		messageClient := client.GetLeader().messageClient
+		publishGroup.Go(func() error {
+			return PublishMessages(messageClient, topic, partition, list, resChannel)
 		})
-		if err != nil {
-			return nil, err
-		}
-		resList = append(resList, res)
+	}
+	err := publishGroup.Wait()
+	close(resChannel)
+	if err != nil {
+		return nil, err
 	}
 	var msgList []*proto.Message
-	for _, response := range resList {
+	for response := range resChannel {
 		msgList = append(msgList, response.Messages...)
 	}
 	return &proto.PublishMessageResponse{
 		Messages:  msgList,
 		LastIndex: 0,
 	}, nil
+}
+
+func PublishMessages(client proto.MessageServiceClient, topicName string, partition uint64, list []*proto.KeyVal, channel chan *proto.PublishMessageResponse) error {
+	res, err := client.PublishMessages(context.Background(), &proto.PublishMessageRequest{
+		Topic:     topicName,
+		Partition: partition,
+		Messages:  list,
+	})
+	if err != nil {
+		log.Err(err).Stack().Msgf("Error publishing to topic %v,partition %v", topicName, partition)
+		return err
+	}
+	channel <- res
+	return nil
 }
