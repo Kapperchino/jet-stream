@@ -8,6 +8,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/hashicorp/raft v1.3.10
+	github.com/planetscale/vtprotobuf v0.4.0
 	github.com/rs/zerolog v1.28.0
 	github.com/stretchr/testify v1.7.1
 	google.golang.org/grpc v1.51.0

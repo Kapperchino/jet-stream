@@ -1,0 +1,46 @@
+version: "3"
+services:
+  server1:
+    image: jet:0.01
+    container_name: nodeA
+    hostname: nodeA
+    volumes:
+      - /jet
+    ports:
+      - "8080"
+      - "8081"
+    command: [ "--raft_bootstrap",
+               "--raft_id", "nodeA",
+               "--address", "localhost:8080",
+               "--raft_data_dir", "/jet",
+               "--gossip_address", "localhost:8081" ]
+  server2:
+    image: jet:0.01
+    container_name: nodeB
+    hostname: nodeB
+    volumes:
+      - /jet
+    ports:
+      - "8080"
+      - "8081"
+    command: [
+      "--raft_id", "nodeB",
+      "--address", "localhost:8080",
+      "--raft_data_dir", "/jet",
+      "--gossip_address", "localhost:8081",
+      "--root_node","nodeA:8081" ]
+  server3:
+    image: jet:0.01
+    container_name: nodeC
+    hostname: nodeC
+    volumes:
+      - /jet
+    ports:
+      - "8080"
+      - "8081"
+    command: [
+      "--raft_id", "nodeC",
+      "--address", "localhost:8080",
+      "--raft_data_dir", "/jet",
+      "--gossip_address", "localhost:8081",
+      "--root_node","nodeA:8081" ]
