@@ -8,15 +8,13 @@ communication, mainly has meta-data. Design doc coming soon. So plan is to write
 so publish will go to the leader node, and consume will consume from the follower nodes.
 ## What works
 ### Single node
-On a single node, producing and consuming works fine. Consuming might still need a bit of work.
+On a single node, producing and consuming are both solid
 ### One raft group
 A raft group is a group of nodes that has one leader and multiple followers.
-Producing works on this one but for consuming, more work will need to be put in as the raft groups doesn't support read operations,
-so a consume call will be considered a write.
+One raft group is quite solid, still need resiliency improvements though
 ### More than one raft group
-So this is getting into sharding, and currently it's not implemented as it needs a client. Cluster membership on the 
-other hand works fine but needs more testing. I used memberlist for cluster membership across raft groups, and each node
-saves cluster meta-data and updates it accordingly.
+So this currently works well locally, but like the above lacks resiliency, for example currently there's only ack for consuming and
+not publishing,which means if a publishing fails but other succeeds, the publishing will go through on the nodes that did succeed.
 ## Design
 TODO
 ## Contribution
