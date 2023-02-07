@@ -44,6 +44,7 @@ type ShardClient struct {
 	memberclients   *haxmap.Map[string, *MemberClient]
 	roundRobinIndex int32
 	partitions      *haxmap.Map[uint64, *PartitionMeta]
+	buffer          [100]*proto.KeyVal
 }
 
 type MemberClient struct {

@@ -5,6 +5,7 @@ import (
 	pb "github.com/Kapperchino/jet-application/proto/proto"
 	"github.com/Kapperchino/jet/factory"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
+	vtgrpc "github.com/planetscale/vtprotobuf/codec/grpc"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -290,15 +291,20 @@ func (suite *FsmTest) setupClient() pb.MessageServiceClient {
 	serviceConfig := `{"healthCheckConfig": {"serviceName": "Example"}, "loadBalancingConfig": [ { "round_robin": {} } ]}`
 	retryOpts := []grpc_retry.CallOption{
 		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(100 * time.Millisecond)),
-		grpc_retry.WithMax(5),
+		grpc_retry.WithMax(0),
 	}
 	maxSize := 1 * 1024 * 1024 * 1024
-	conn, _ := grpc.Dial(suite.myAddr,
+	conn, err := grpc.Dial(suite.myAddr,
 		grpc.WithDefaultServiceConfig(serviceConfig), grpc.WithInsecure(),
-		grpc.WithDefaultCallOptions(grpc.WaitForReady(false),
+		grpc.WithDefaultCallOptions(grpc.WaitForReady(true),
 			grpc.MaxCallRecvMsgSize(maxSize),
-			grpc.MaxCallSendMsgSize(maxSize)),
+			grpc.MaxCallSendMsgSize(maxSize),
+			grpc.CallContentSubtype(vtgrpc.Name)),
 		grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(retryOpts...)))
+	if err != nil {
+		log.Err(err).Stack().Msgf("Error creating connection")
+		return nil
+	}
 	return pb.NewMessageServiceClient(conn)
 }
 

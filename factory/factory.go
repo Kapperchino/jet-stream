@@ -12,6 +12,7 @@ import (
 	"github.com/Kapperchino/jet-leader-rpc/leaderhealth"
 	transport "github.com/Kapperchino/jet-transport"
 	"github.com/Kapperchino/jet/config"
+	_ "github.com/Kapperchino/jet/factory/vtprotoencoding"
 	"github.com/Kapperchino/jet/util"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-uuid"

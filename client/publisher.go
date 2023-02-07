@@ -10,7 +10,6 @@ import (
 )
 
 // PublishMessage need to get each partition's location within the cluster, then do consistent hashing with the key to get the partition needed
-// TODO balancing
 func (j *JetClient) PublishMessage(messages []*proto.KeyVal, topic string) (*proto.PublishMessageResponse, error) {
 	meta, exists := j.metaData.topics.Get(topic)
 	if !exists {
