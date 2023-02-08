@@ -17,5 +17,7 @@ RUN go build -o jet
 VOLUME ["/jet"]
 
 EXPOSE 8080
+EXPOSE 8081/udp
+EXPOSE 8081
 
 ENTRYPOINT ["./jet"]
