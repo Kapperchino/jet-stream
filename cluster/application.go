@@ -17,7 +17,7 @@ type RpcInterface struct {
 	pb.UnimplementedClusterMetaServiceServer
 }
 
-func InitClusterState(i *RpcInterface, nodeName string, address string, shardId string, bootstrap bool, logger *zerolog.Logger) *ClusterState {
+func InitClusterState(i *RpcInterface, nodeName string, address string, shardId string, bootstrap bool, logger *zerolog.Logger, raftPtr *raft.Raft) *ClusterState {
 	leader := ""
 	if bootstrap {
 		leader = nodeName
@@ -29,6 +29,7 @@ func InitClusterState(i *RpcInterface, nodeName string, address string, shardId 
 			ShardInfo: &ShardInfo{
 				shardId:   shardId,
 				Leader:    leader,
+				nodeId:    nodeName,
 				MemberMap: haxmap.New[string, MemberInfo](),
 			},
 			MemberInfo: &MemberInfo{
@@ -36,6 +37,7 @@ func InitClusterState(i *RpcInterface, nodeName string, address string, shardId 
 				IsLeader: false,
 				Address:  address,
 			},
+			Raft: raftPtr,
 		},
 		Logger: logger,
 	}
@@ -58,6 +60,7 @@ func (r RpcInterface) GetShardInfo(_ context.Context, req *pb.GetShardInfoReques
 			MemberAddressMap: map[string]*pb.MemberInfo{},
 			LeaderId:         r.ClusterState.getLeader(),
 			ShardId:          r.ClusterState.getShardId(),
+			NodeId:           r.ClusterState.getNodeId(),
 		},
 	}
 	shardMap.ForEach(func(s string, info MemberInfo) bool {
@@ -79,6 +82,7 @@ func (r RpcInterface) GetClusterInfo(context.Context, *pb.GetClusterInfoRequest)
 			MemberAddressMap: toProtoMemberMap(info.MemberMap),
 			LeaderId:         info.Leader,
 			ShardId:          info.shardId,
+			NodeId:           info.nodeId,
 		}
 		return true
 	})

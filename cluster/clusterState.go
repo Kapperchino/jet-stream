@@ -17,6 +17,7 @@ type ShardState struct {
 	ShardInfo  *ShardInfo
 	MemberInfo *MemberInfo
 	RaftChan   chan raft.Observation
+	Raft       *raft.Raft
 }
 
 type MemberInfo struct {
@@ -27,6 +28,7 @@ type MemberInfo struct {
 
 type ShardInfo struct {
 	shardId   string
+	nodeId    string
 	Leader    string
 	MemberMap *haxmap.Map[string, MemberInfo]
 }
@@ -41,6 +43,10 @@ func (c ClusterState) getMemberMap() *haxmap.Map[string, MemberInfo] {
 
 func (c ClusterState) getLeader() string {
 	return c.GetShardInfo().Leader
+}
+
+func (c ClusterState) getNodeId() string {
+	return c.getMemberInfo().NodeId
 }
 
 func (c ClusterState) getMemberInfo() *MemberInfo {

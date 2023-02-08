@@ -2,7 +2,6 @@ package test
 
 import (
 	"context"
-	adminPb "github.com/Kapperchino/jet-admin/proto/proto"
 	clusterPb "github.com/Kapperchino/jet-cluster/proto/proto"
 	"github.com/Kapperchino/jet/factory"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
@@ -19,11 +18,10 @@ import (
 // functionality from testify - including assertion methods.
 type ClusterTest struct {
 	suite.Suite
-	client      [2]clusterPb.ClusterMetaServiceClient
-	adminClient adminPb.RaftAdminClient
-	address     [2]string
-	nodeName    [2]string
-	servers     chan *factory.Server
+	client   [2]clusterPb.ClusterMetaServiceClient
+	address  [2]string
+	nodeName [2]string
+	servers  chan *factory.Server
 }
 
 const (
@@ -40,9 +38,9 @@ func (suite *ClusterTest) SetupSuite() {
 	suite.nodeName = [2]string{"nodeA", "nodeB"}
 	suite.servers = make(chan *factory.Server, 5)
 	log.Print("Starting the server")
-	go factory.SetupServer(testData, raftDir, suite.address[0], suite.nodeName[0], "localhost:8081", "", true, suite.servers)
+	go factory.SetupServer(testData, raftDir, suite.address[0], suite.nodeName[0], "localhost:8081", "", true, suite.servers, "shardA")
 	time.Sleep(5 * time.Second)
-	go factory.SetupServer(testData, raftDir, suite.address[1], suite.nodeName[1], "localhost:8083", "localhost:8081", true, suite.servers)
+	go factory.SetupServer(testData, raftDir, suite.address[1], suite.nodeName[1], "localhost:8083", "localhost:8081", true, suite.servers, "shardB")
 	log.Print("Starting the client")
 	suite.client[0] = suite.setupClient(suite.address[0])
 	suite.client[1] = suite.setupClient(suite.address[1])
@@ -57,7 +55,6 @@ func (suite *ClusterTest) TearDownSuite() {
 // All methods that begin with "Test" are run as tests within a
 // suite.
 func (suite *ClusterTest) TestGetClusterInfo() {
-	time.Sleep(10 * time.Second)
 	res, err := suite.client[0].GetClusterInfo(context.Background(), &clusterPb.GetClusterInfoRequest{})
 	assert.Nil(suite.T(), err)
 	log.Info().Msgf("%s", res)

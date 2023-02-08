@@ -4,7 +4,10 @@ import (
 	"github.com/Kapperchino/jet-cluster/proto/proto"
 	"github.com/Kapperchino/jet/util"
 	"github.com/alphadose/haxmap"
+	"github.com/hashicorp/raft"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"time"
 )
 
 type ClusterDelegate struct {
@@ -51,6 +54,7 @@ func (c ClusterDelegate) LocalState(join bool) []byte {
 		MemberAddressMap: map[string]*proto.MemberInfo{},
 		LeaderId:         c.ClusterState.getLeader(),
 		ShardId:          c.ClusterState.getShardId(),
+		NodeId:           c.ClusterState.getNodeId(),
 	}
 	shardMap.ForEach(func(s string, info MemberInfo) bool {
 		res.MemberAddressMap[s] = &proto.MemberInfo{
@@ -68,15 +72,31 @@ func (c ClusterDelegate) LocalState(join bool) []byte {
 }
 
 func (c ClusterDelegate) MergeRemoteState(buf []byte, join bool) {
-	c.Logger().Debug().Msgf("remote state is %s, join: %s", buf, join)
 	var meta proto.ShardInfo
 	err := util.DeserializeMessage(buf, &meta)
 	if err != nil {
 		c.Logger().Err(err).Msgf("Error deserializing message")
 		return
 	}
+	c.Logger().Debug().Msgf("remote state is %v, join: %s", meta, join)
 	//adding it to the cluster
 	if join {
+		//add node to shard
+		if meta.ShardId == c.ClusterState.getShardId() {
+			if meta.LeaderId == c.ClusterState.getLeader() || meta.LeaderId == "" && c.ClusterState.getLeader() != "" {
+				raftPrt := c.ClusterState.getShardState().Raft
+				//add voter
+				address := meta.MemberAddressMap[meta.NodeId].Address
+				future := raftPrt.AddVoter(raft.ServerID(meta.NodeId), raft.ServerAddress(address), 0, time.Second*20)
+				go func() {
+					err := future.Error()
+					if err != nil {
+						log.Err(err).Msgf("Error when adding voter")
+					}
+				}()
+			}
+			return
+		}
 		memberMap := haxmap.New[string, MemberInfo]()
 		for key, val := range meta.MemberAddressMap {
 			info := MemberInfo{
@@ -92,6 +112,7 @@ func (c ClusterDelegate) MergeRemoteState(buf []byte, join bool) {
 		c.ClusterState.ClusterInfo.Set(meta.ShardId, &ShardInfo{
 			shardId:   meta.ShardId,
 			Leader:    meta.LeaderId,
+			nodeId:    meta.NodeId,
 			MemberMap: memberMap,
 		})
 		return

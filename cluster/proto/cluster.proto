@@ -27,7 +27,8 @@ message ClusterInfo {
 message ShardInfo {
   map<string, MemberInfo> memberAddressMap = 1;
   string leaderId = 2;
-  string shardId = 3;
+  string nodeId = 3;
+  string shardId = 4;
 }
 
 message MemberInfo {

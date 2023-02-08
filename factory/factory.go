@@ -15,7 +15,6 @@ import (
 	_ "github.com/Kapperchino/jet/factory/vtprotoencoding"
 	"github.com/Kapperchino/jet/util"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/raft"
 	"github.com/rs/zerolog"
@@ -105,7 +104,7 @@ func NewRaft(myID, myAddress string, fsm raft.FSM, bootStrap bool, raftDir strin
 	return r, tm, nil
 }
 
-func SetupServer(badgerDir string, raftDir string, address string, nodeName string, gossipAddress string, rootNode string, bootstrap bool, server chan *Server) {
+func SetupServer(badgerDir string, raftDir string, address string, nodeName string, gossipAddress string, rootNode string, bootstrap bool, server chan *Server, shardId string) {
 	_, port, err := net.SplitHostPort(address)
 	if err != nil {
 		log.Fatal().Msgf("failed to parse local address (%q): %v", address, err)
@@ -150,29 +149,19 @@ func SetupServer(badgerDir string, raftDir string, address string, nodeName stri
 		NodeState: nodeState,
 		Raft:      r,
 	})
-	shardId := ""
-	if bootstrap {
-		id, err := uuid.GenerateUUID()
-		if err != nil {
-			log.Fatal().Msgf("failed to create id raft: %v", err)
-		}
-		shardId = id
-	}
 	clusterLog := log.Level(config.LOG_LEVEL).Output(outputWithNode)
 	clusterRpc := &cluster.RpcInterface{
 		ClusterState: nil,
 		Raft:         r,
 		Logger:       &clusterLog,
 	}
-	clusterRpc.ClusterState = cluster.InitClusterState(clusterRpc, nodeName, address, shardId, bootstrap, &clusterLog)
-	var memberList *memberlist.Memberlist
-	if bootstrap {
-		memberListener := cluster.InitClusterListener(clusterRpc.ClusterState)
-		memberList = NewMemberList(MakeConfig(nodeName, shardId, gossipAddress, memberListener, cluster.ClusterDelegate{
-			ClusterState: clusterRpc.ClusterState,
-		}), rootNode)
-		clusterRpc.MemberList = memberList
-	}
+	clusterRpc.ClusterState = cluster.InitClusterState(clusterRpc, nodeName, address, shardId, bootstrap, &clusterLog, r)
+	memberListener := cluster.InitClusterListener(clusterRpc.ClusterState)
+	memberList := NewMemberList(MakeConfig(nodeName, shardId, gossipAddress, memberListener, cluster.ClusterDelegate{
+		ClusterState: clusterRpc.ClusterState,
+	}), rootNode)
+	clusterRpc.MemberList = memberList
+
 	nodeState.ShardState = clusterRpc.ClusterState.CurShardState
 	clusterPb.RegisterClusterMetaServiceServer(s, clusterRpc)
 	tm.Register(s)

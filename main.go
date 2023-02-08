@@ -15,6 +15,7 @@ var (
 	dataDir       = flag.String("data_dir", "", "Local store for the partitions")
 	raftBootstrap = flag.Bool("raft_bootstrap", false, "Whether to bootstrap the Raft cluster")
 	rootNode      = flag.String("root_node", "", "Root node for gossip membership")
+	shardId       = flag.String("shard_id", "", "Shard id for the shard group")
 )
 
 func main() {
@@ -22,5 +23,8 @@ func main() {
 	if *raftId == "" {
 		log.Fatal().Msg("Cannot have null raftid")
 	}
-	factory.SetupServer(*dataDir, *raftDir, *myAddr, *raftId, *gossipAddress, *rootNode, *raftBootstrap, nil)
+	if *shardId == "" {
+		log.Fatal().Msgf("Cannot have null shardId")
+	}
+	factory.SetupServer(*dataDir, *raftDir, *myAddr, *raftId, *gossipAddress, *rootNode, *raftBootstrap, nil, *shardId)
 }

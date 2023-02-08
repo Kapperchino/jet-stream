@@ -42,8 +42,9 @@ func MakeConfig(nodeName string, shardName string, gossipAddress string, eventDe
 		return fmt.Sprintf("%s:", i)
 	}
 	stdLogger := util.NewStdLoggerWithOutput(output)
+	name := shardName + "/" + nodeName
 	return &memberlist.Config{
-		Name:                    shardName,
+		Name:                    name,
 		BindAddr:                host,
 		BindPort:                portInt,
 		AdvertiseAddr:           "127.0.0.1",
