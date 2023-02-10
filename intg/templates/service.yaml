@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: jet-service
+  namespace: jet-stream
+  labels:
+    app: jet
+spec:
+  ports:
+    - port: 8080
+      name: web
+    - port: 8081
+      name: gossip
+  clusterIP: None
+  selector:
+    app: jet

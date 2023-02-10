@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: jet-shard
+  namespace: jet-stream
+spec:
+  selector:
+    matchLabels:
+      app: jet # has to match .spec.template.metadata.labels
+  serviceName: "jet-service"
+  replicas: {{.Values.replicaCount}} # by default is 1
+  minReadySeconds: 10 # by default is 0
+  template:
+    metadata:
+      labels:
+        app: jet # has to match .spec.selector.matchLabels
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: jet-pod
+          image: "jet:0.04"
+          imagePullPolicy: Never
+          args:
+          {{- $nodeCount := .Values.replicaCount | int}}
+          {{- range $index := until $nodeCount }}
+            - --raft_id
+            - node-{{ $index }}
+            - --address
+            - localhost:8080
+            - --raft_data_dir
+            - /usr/share/jet
+            - --gossip_address
+            - localhost:8081
+            - --root_node
+            - dns://jet-0.jet-service.jet-stream.svc.cluster.local
+            - --shard_id
+            - shardA
+          {{- end }}
+          ports:
+            - containerPort: 8080
+              name: web
+            - containerPort: 8081
+              name: gossip
+          readinessProbe:
+            exec:
+              command: [ "/bin/grpc_health_probe", "-addr=localhost:8080" ]
+            initialDelaySeconds: 5
+          livenessProbe:
+            exec:
+              command: [ "/bin/grpc_health_probe", "-addr=localhost:8080" ]
+            initialDelaySeconds: 10
+          volumeMounts:
+            - name: jet-volume
+              mountPath: /tmp/jet-volume
+              readOnly: false
+      volumes:
+        - name: jet-volume
+          persistentVolumeClaim:
+            claimName: jet-volume-claim
