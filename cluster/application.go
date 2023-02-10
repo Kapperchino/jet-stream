@@ -17,18 +17,14 @@ type RpcInterface struct {
 	pb.UnimplementedClusterMetaServiceServer
 }
 
-func InitClusterState(i *RpcInterface, nodeName string, address string, shardId string, bootstrap bool, logger *zerolog.Logger, raftPtr *raft.Raft) *ClusterState {
-	leader := ""
-	if bootstrap {
-		leader = nodeName
-	}
+func InitClusterState(i *RpcInterface, nodeName string, address string, shardId string, logger *zerolog.Logger, raftPtr *raft.Raft) *ClusterState {
 	clusterState := ClusterState{
 		ClusterInfo: haxmap.New[string, *ShardInfo](),
 		CurShardState: &ShardState{
 			RaftChan: make(chan raft.Observation, 50),
 			ShardInfo: &ShardInfo{
 				shardId:   shardId,
-				Leader:    leader,
+				Leader:    "",
 				nodeId:    nodeName,
 				MemberMap: haxmap.New[string, MemberInfo](),
 			},

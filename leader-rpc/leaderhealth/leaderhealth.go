@@ -20,10 +20,6 @@ func Setup(r *raft.Raft, s *grpc.Server, services []string) {
 // It will set the given services as SERVING if we are the leader, and as NOT_SERVING otherwise.
 func Report(r *raft.Raft, hs *health.Server, services []string) {
 	ch := make(chan raft.Observation, 1)
-	r.RegisterObserver(raft.NewObserver(ch, true, func(o *raft.Observation) bool {
-		_, ok := o.Data.(raft.LeaderObservation)
-		return ok
-	}))
 	setServingStatus(hs, services, r.State() == raft.Leader)
 	go func() {
 		for range ch {

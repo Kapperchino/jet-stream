@@ -41,7 +41,7 @@ func (s *Server) Kill() {
 	s.Raft.Shutdown().Error()
 }
 
-func NewRaft(myID, myAddress string, fsm raft.FSM, bootStrap bool, raftDir string) (*raft.Raft, *transport.Manager, error) {
+func NewRaft(myID, myAddress string, fsm raft.FSM, raftDir string) (*raft.Raft, *transport.Manager, error) {
 	c := raft.DefaultConfig()
 	c.ProtocolVersion = raft.ProtocolVersionMax
 	c.LocalID = raft.ServerID(myID)
@@ -86,33 +86,29 @@ func NewRaft(myID, myAddress string, fsm raft.FSM, bootStrap bool, raftDir strin
 		return nil, nil, fmt.Errorf("raft.NewRaft: %v", err)
 	}
 
-	if bootStrap {
-		cfg := raft.Configuration{
-			Servers: []raft.Server{
-				{
-					Suffrage: raft.Voter,
-					ID:       raft.ServerID(myID),
-					Address:  raft.ServerAddress(myAddress),
-				},
+	cfg := raft.Configuration{
+		Servers: []raft.Server{
+			{
+				Suffrage: raft.Voter,
+				ID:       raft.ServerID(myID),
+				Address:  raft.ServerAddress(myAddress),
 			},
-		}
-		f := r.BootstrapCluster(cfg)
-		if err := f.Error(); err != nil {
-			return nil, nil, fmt.Errorf("raft.Raft.BootstrapCluster: %v", err)
-		}
+		},
 	}
+	f := r.BootstrapCluster(cfg)
+	if err := f.Error(); err != nil {
+		log.Err(err).Msgf("Bootstrap error")
+	}
+
 	return r, tm, nil
 }
 
-func SetupServer(badgerDir string, raftDir string, address string, nodeName string, gossipAddress string, rootNode string, bootstrap bool, server chan *Server, shardId string) {
-	_, port, err := net.SplitHostPort(address)
+func SetupServer(badgerDir string, raftDir string, address string, nodeName string, gossipAddress string, rootNode string, server chan *Server, shardId string) {
+	_, _, err := net.SplitHostPort(address)
 	if err != nil {
 		log.Fatal().Msgf("failed to parse local address (%q): %v", address, err)
 	}
-	sock, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
-	if err != nil {
-		log.Fatal().Msgf("failed to listen: %v", err)
-	}
+	sock, err := net.Listen("tcp", address)
 	if err != nil {
 		log.Fatal().Msgf("failed to listen: %v", err)
 	}
@@ -140,7 +136,7 @@ func SetupServer(badgerDir string, raftDir string, address string, nodeName stri
 		HandlerMap:   handlers.InitHandlers(),
 		Logger:       &nodeLogger,
 	}
-	r, tm, err := NewRaft(nodeName, address, nodeState, bootstrap, raftDir)
+	r, tm, err := NewRaft(nodeName, address, nodeState, raftDir)
 	if err != nil {
 		log.Fatal().Msgf("failed to start raft: %v", err)
 	}
@@ -155,17 +151,16 @@ func SetupServer(badgerDir string, raftDir string, address string, nodeName stri
 		Raft:         r,
 		Logger:       &clusterLog,
 	}
-	clusterRpc.ClusterState = cluster.InitClusterState(clusterRpc, nodeName, address, shardId, bootstrap, &clusterLog, r)
+	clusterRpc.ClusterState = cluster.InitClusterState(clusterRpc, nodeName, address, shardId, &clusterLog, r)
 	memberListener := cluster.InitClusterListener(clusterRpc.ClusterState)
 	memberList := NewMemberList(MakeConfig(nodeName, shardId, gossipAddress, memberListener, cluster.ClusterDelegate{
 		ClusterState: clusterRpc.ClusterState,
 	}), rootNode)
 	clusterRpc.MemberList = memberList
-
 	nodeState.ShardState = clusterRpc.ClusterState.CurShardState
 	clusterPb.RegisterClusterMetaServiceServer(s, clusterRpc)
 	tm.Register(s)
-	leaderhealth.Setup(r, s, []string{"Example", "ClusterMetaService"})
+	leaderhealth.Setup(r, s, []string{"Example", "ClusterMetaService", "", "MessageService", "RaftTransport"})
 	raftadmin.Register(s, r)
 	reflection.Register(s)
 	server <- &Server{

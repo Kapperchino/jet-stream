@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"os"
 	"testing"
 	"time"
@@ -19,11 +20,12 @@ import (
 // The cluster tests is the one that tests the entire cluster consists of many shards
 type ShardsTest struct {
 	suite.Suite
-	client      [2]clusterPb.ClusterMetaServiceClient
-	adminClient adminPb.RaftAdminClient
-	address     [2]string
-	nodeName    [2]string
-	servers     chan *factory.Server
+	client       [2]clusterPb.ClusterMetaServiceClient
+	healthClient [2]grpc_health_v1.HealthClient
+	adminClient  adminPb.RaftAdminClient
+	address      [2]string
+	nodeName     [2]string
+	servers      chan *factory.Server
 }
 
 // Make sure that VariableThatShouldStartAtFive is set to five
@@ -34,22 +36,15 @@ func (suite *ShardsTest) SetupSuite() {
 	suite.nodeName = [2]string{"nodeA", "nodeB"}
 	suite.servers = make(chan *factory.Server, 5)
 	log.Print("Starting the server")
-	go factory.SetupServer(testData, raftDir, suite.address[0], suite.nodeName[0], "localhost:8081", "", true, suite.servers, "shardA")
+	go factory.SetupServer(testData, raftDir, suite.address[0], suite.nodeName[0], "localhost:8081", "", "shardA")
 	time.Sleep(5 * time.Second)
-	go factory.SetupServer(testData, raftDir, suite.address[1], suite.nodeName[1], "localhost:8083", "localhost:8081", false, suite.servers, "shardA")
+	go factory.SetupServer(testData, raftDir, suite.address[1], suite.nodeName[1], "localhost:8083", "localhost:8081", "shardA")
 	log.Print("Starting the client")
 	suite.client[0] = suite.setupClient(suite.address[0])
 	suite.adminClient = suite.setupAdminClient(suite.address[0])
-
 	suite.client[1] = suite.setupClient(suite.address[1])
-	//adding nodeB to nodeA as a follower
-	_, err := suite.adminClient.AddVoter(context.Background(), &adminPb.AddVoterRequest{
-		Id:            "nodeB",
-		Address:       "localhost:8082",
-		PreviousIndex: 0,
-	})
+	suite.healthClient[0] = suite.setupHealthClient(suite.address[0])
 	time.Sleep(5 * time.Second)
-	assert.Nil(suite.T(), err)
 }
 
 func (suite *ShardsTest) TearDownSuite() {
@@ -61,6 +56,8 @@ func (suite *ShardsTest) TestGetShardInfo() {
 	log.Info().Msgf("%+v", res)
 	assert.Nil(suite.T(), err)
 	assert.Equal(suite.T(), len(res.GetInfo().MemberAddressMap), 2)
+	res1, err := suite.healthClient[0].Check(context.Background(), &grpc_health_v1.HealthCheckRequest{})
+	log.Print(res1.GetStatus())
 }
 
 func (suite *ShardsTest) TestGetShardInfoPeer() {
@@ -167,6 +164,22 @@ func (suite *ShardsTest) setupAdminClient(address string) adminPb.RaftAdminClien
 	return adminPb.NewRaftAdminClient(conn)
 }
 
+func (suite *ShardsTest) setupHealthClient(address string) grpc_health_v1.HealthClient {
+	serviceConfig := `{"healthCheckConfig": {"serviceName": "Example"}, "loadBalancingConfig": [ { "round_robin": {} } ]}`
+	retryOpts := []grpc_retry.CallOption{
+		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(100 * time.Millisecond)),
+		grpc_retry.WithMax(5),
+	}
+	maxSize := 1 * 1024 * 1024 * 1024
+	conn, _ := grpc.Dial(address,
+		grpc.WithDefaultServiceConfig(serviceConfig), grpc.WithInsecure(),
+		grpc.WithDefaultCallOptions(grpc.WaitForReady(false),
+			grpc.MaxCallRecvMsgSize(maxSize),
+			grpc.MaxCallSendMsgSize(maxSize)),
+		grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(retryOpts...)))
+	return grpc_health_v1.NewHealthClient(conn)
+}
+
 func (suite *ShardsTest) addNodeC() {
-	go factory.SetupServer(testData, raftDir, "localhost:8084", "nodeC", "localhost:8085", "localhost:8081", false, suite.servers, "shardA")
+	go factory.SetupServer(testData, raftDir, "localhost:8084", "nodeC", "localhost:8085", "localhost:8081", "shardA")
 }

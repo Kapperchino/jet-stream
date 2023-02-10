@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/Kapperchino/jet-application/fsm"
 	pb "github.com/Kapperchino/jet-application/proto/proto"
-	"github.com/Kapperchino/jet-leader-rpc/rafterrors"
 	"github.com/Kapperchino/jet/util"
 	"github.com/hashicorp/raft"
 	"time"
@@ -31,7 +30,7 @@ func PublishMessagesInternal(r RpcInterface, req *pb.PublishMessageRequest) ([]*
 	val, _ := util.SerializeMessage(input)
 	res := r.Raft.Apply(val, time.Second)
 	if err := res.Error(); err != nil {
-		return nil, rafterrors.MarkRetriable(err)
+		return nil, err
 	}
 	err, isErr := res.Response().(error)
 	if isErr {
@@ -103,7 +102,7 @@ func CreateTopicInternal(r RpcInterface, req *pb.CreateTopicRequest) (*pb.Create
 	val, _ := util.SerializeMessage(input)
 	res := r.Raft.Apply(val, time.Second)
 	if err := res.Error(); err != nil {
-		return nil, rafterrors.MarkRetriable(err)
+		return nil, err
 	}
 	err, isErr := res.Response().(error)
 	if isErr {
@@ -146,7 +145,7 @@ func AckConsumeInternal(r RpcInterface, req *pb.AckConsumeRequest) (*pb.AckConsu
 	val, _ := util.SerializeMessage(input)
 	res := r.Raft.Apply(val, time.Second)
 	if err := res.Error(); err != nil {
-		return nil, rafterrors.MarkRetriable(err)
+		return nil, err
 	}
 	err, isErr := res.Response().(error)
 	if isErr {
@@ -180,7 +179,7 @@ func CreateConsumerGroupInternal(r RpcInterface, req *pb.CreateConsumerGroupRequ
 	val, _ := util.SerializeMessage(input)
 	res := r.Raft.Apply(val, time.Second)
 	if err := res.Error(); err != nil {
-		return nil, rafterrors.MarkRetriable(err)
+		return nil, err
 	}
 	err, isErr := res.Response().(error)
 	if isErr {

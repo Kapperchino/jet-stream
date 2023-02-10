@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: jet-stream
+  labels:
+    name: jet-stream
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jet-service
+  namespace: jet-stream
+  labels:
+    app: jet
+spec:
+  ports:
+    - port: 8080
+      name: web
+    - port: 8081
+      name: gossip
+  clusterIP: None
+  selector:
+    app: jet
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  namespace: jet-stream
+  name: jet-volume
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /tmp/jet-volume
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: jet-stream
+  name: jet-volume-claim
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: jet-shard
+  namespace: jet-stream
+spec:
+  selector:
+    matchLabels:
+      app: jet # has to match .spec.template.metadata.labels
+  serviceName: "nginx"
+  replicas: 3 # by default is 1
+  minReadySeconds: 10 # by default is 0
+  template:
+    metadata:
+      labels:
+        app: jet # has to match .spec.selector.matchLabels
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: jet-pod
+          image: jet:0.04
+          imagePullPolicy: Never
+          args: [ "--raft_id", "nodeA",
+                     "--address", "localhost:8080",
+                     "--raft_data_dir", "/usr/share/jet",
+                     "--gossip_address", "localhost:8081",
+                     "--shard_id","shardA" ]
+          ports:
+            - containerPort: 8080
+              name: web
+            - containerPort: 8081
+              name: gossip
+          readinessProbe:
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=localhost:8080"]
+            initialDelaySeconds: 5
+          livenessProbe:
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=localhost:8080"]
+            initialDelaySeconds: 10
+          volumeMounts:
+            - name: jet-volume
+              mountPath: /tmp/jet-volume
+              readOnly: false
+      volumes:
+        - name: jet-volume
+          persistentVolumeClaim:
+            claimName: jet-volume-claim
