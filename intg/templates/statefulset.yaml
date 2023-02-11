@@ -21,34 +21,29 @@ spec:
           image: "jet:0.04"
           imagePullPolicy: Never
           args:
-          {{- $nodeCount := .Values.replicaCount | int}}
-          {{- range $index := until $nodeCount }}
-            - --raft_id
-            - node-{{ $index }}
-            - --address
-            - localhost:8080
             - --raft_data_dir
             - /usr/share/jet
-            - --gossip_address
-            - localhost:8081
             - --root_node
-            - dns://jet-0.jet-service.jet-stream.svc.cluster.local
+            - jet-shard-0.jet-service.jet-stream.svc.cluster.local:8081
             - --shard_id
             - shardA
-          {{- end }}
           ports:
             - containerPort: 8080
               name: web
             - containerPort: 8081
-              name: gossip
+              protocol: UDP
+              name: gossip-udp
+            - containerPort: 8081
+              protocol: TCP
+              name: gossip-tcp
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
           readinessProbe:
-            exec:
-              command: [ "/bin/grpc_health_probe", "-addr=localhost:8080" ]
-            initialDelaySeconds: 5
-          livenessProbe:
-            exec:
-              command: [ "/bin/grpc_health_probe", "-addr=localhost:8080" ]
-            initialDelaySeconds: 10
+            grpc:
+              port: 8080
           volumeMounts:
             - name: jet-volume
               mountPath: /tmp/jet-volume

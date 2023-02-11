@@ -3,17 +3,6 @@
 # Declare variables to be passed into your templates.
 
 replicaCount: 3
-type: int64
-
-replicaCommands:
-  - args: [ "--raft_id", "nodeA",
-               "--address", "localhost:8080",
-               "--raft_data_dir", "/usr/share/jet",
-               "--gossip_address", "localhost:8081",
-               "--shard_id","shardA" ]
-  - args: "echo 'Running command for replica 1.'"
-  - args: "echo 'Running command for replica 2.'"
-
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""

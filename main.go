@@ -4,11 +4,12 @@ import (
 	"flag"
 	"github.com/Kapperchino/jet/factory"
 	"github.com/rs/zerolog/log"
+	"os"
 )
 
 var (
-	myAddr        = flag.String("address", "localhost:50051", "TCP host+port for this node")
-	gossipAddress = flag.String("gossip_address", "localhost:50052", "address for gossip")
+	myAddr        = flag.String("address", "", "TCP host+port for this node")
+	gossipAddress = flag.String("gossip_address", "", "address for gossip")
 	raftId        = flag.String("raft_id", "", "Node id used by Raft")
 
 	raftDir  = flag.String("raft_data_dir", "data/", "Raft data dir")
@@ -20,7 +21,26 @@ var (
 func main() {
 	flag.Parse()
 	if *raftId == "" {
-		log.Fatal().Msg("Cannot have null raftid")
+		name := os.Getenv("HOSTNAME")
+		if name == "" {
+			log.Fatal().Msg("Cannot have null raftid")
+		}
+		*raftId = name
+	}
+	if *myAddr == "" {
+		addr := os.Getenv("POD_IP")
+		if addr == "" {
+			log.Fatal().Msg("Cannot have null myAddr")
+		}
+		*myAddr = addr + ":8080"
+	}
+
+	if *gossipAddress == "" {
+		addr := os.Getenv("POD_IP")
+		if addr == "" {
+			log.Fatal().Msg("Cannot have null myAddr")
+		}
+		*gossipAddress = addr + ":8081"
 	}
 	if *shardId == "" {
 		log.Fatal().Msgf("Cannot have null shardId")
