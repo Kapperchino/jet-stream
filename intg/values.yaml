@@ -2,7 +2,11 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+
+shardCount: 5
+
 replicaCount: 3
+
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""

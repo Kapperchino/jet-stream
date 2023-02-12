@@ -1,14 +1,17 @@
+{{ $replicas := .Values.replicaCount}}
+{{ range $k, $v := until ( .Values.shardCount | int) }}
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: jet-shard
+  name: jet-shard-{{$v}}
   namespace: jet-stream
 spec:
   selector:
     matchLabels:
       app: jet # has to match .spec.template.metadata.labels
   serviceName: "jet-service"
-  replicas: {{.Values.replicaCount}} # by default is 1
+  replicas: {{$replicas}}  # by default is 1
   minReadySeconds: 10 # by default is 0
   template:
     metadata:
@@ -24,9 +27,9 @@ spec:
             - --raft_data_dir
             - /usr/share/jet
             - --root_node
-            - jet-shard-0.jet-service.jet-stream.svc.cluster.local:8081
+            - jet-shard-0-0.jet-service.jet-stream.svc.cluster.local:8081
             - --shard_id
-            - shardA
+            - shard-{{$v}}
           ports:
             - containerPort: 8080
               name: web
@@ -52,3 +55,4 @@ spec:
         - name: jet-volume
           persistentVolumeClaim:
             claimName: jet-volume-claim
+{{ end }}
