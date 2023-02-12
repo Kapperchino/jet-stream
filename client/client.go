@@ -6,8 +6,8 @@ import (
 	clusterPb "github.com/Kapperchino/jet-cluster/proto/proto"
 	"github.com/alphadose/haxmap"
 	"github.com/buraksezer/consistent"
-	"github.com/cespare/xxhash/v2"
 	"github.com/rs/zerolog/log"
+	"github.com/spaolacci/murmur3"
 	"math/rand"
 	"strconv"
 )
@@ -57,7 +57,7 @@ type hasher struct{}
 
 func (h hasher) Sum64(data []byte) uint64 {
 	// you should use a proper hash function for uniformity.
-	return xxhash.Sum64(data)
+	return murmur3.Sum64(data)
 }
 
 func New(address string) (*JetClient, error) {
