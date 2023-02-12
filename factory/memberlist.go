@@ -43,11 +43,15 @@ func MakeConfig(nodeName string, shardName string, gossipAddress string, eventDe
 	}
 	stdLogger := util.NewStdLoggerWithOutput(output)
 	name := shardName + "/" + nodeName
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		log.Panic().Msgf("Could not get IPs: %v\n", err)
+	}
 	return &memberlist.Config{
 		Name:                    name,
 		BindAddr:                host,
 		BindPort:                portInt,
-		AdvertiseAddr:           "127.0.0.1",
+		AdvertiseAddr:           ips[0].String(),
 		AdvertisePort:           portInt,
 		ProtocolVersion:         memberlist.ProtocolVersion2Compatible,
 		TCPTimeout:              30 * time.Second,       // Timeout after 10 seconds
