@@ -34,7 +34,7 @@ func (suite *FsmTest) SetupSuite() {
 	suite.servers = make(chan *factory.Server, 5)
 	suite.myAddr = "localhost:8080"
 	log.Printf("Starting the server")
-	go factory.SetupServer(testData, raftDir, suite.myAddr, "nodeA", "localhost:8081", "", "shardA")
+	go factory.SetupServer(testData, raftDir, suite.myAddr, "nodeA", "localhost:8081", "", suite.servers, "shardA")
 	time.Sleep(3 * time.Second)
 	log.Printf("Starting the client")
 	suite.client = suite.setupClient()

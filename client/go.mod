@@ -5,12 +5,12 @@ go 1.19
 require (
 	github.com/alphadose/haxmap v1.2.0
 	github.com/buraksezer/consistent v0.10.0
-	github.com/cespare/xxhash/v2 v2.1.1
 	github.com/deckarep/golang-set/v2 v2.1.0
 	github.com/google/uuid v1.3.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/rs/zerolog v1.28.0
-	github.com/stretchr/testify v1.7.1
+	github.com/spaolacci/murmur3 v1.1.0
+	github.com/stretchr/testify v1.8.1
 	golang.org/x/sync v0.1.0
 	google.golang.org/grpc v1.51.0
 )
@@ -27,8 +27,8 @@ require (
 	golang.org/x/net v0.5.0 // indirect
 	golang.org/x/sys v0.4.0 // indirect
 	golang.org/x/text v0.6.0 // indirect
-	google.golang.org/genproto v0.0.0-20210903162649-d08c68adba83 // indirect
+	google.golang.org/genproto v0.0.0-20220617124728-180714bec0ad // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
-	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

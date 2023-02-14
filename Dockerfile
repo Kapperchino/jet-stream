@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM golang:1.19-alpine
+FROM golang:1.19-alpine as Builder
 
 WORKDIR /app
 
@@ -10,10 +10,15 @@ RUN go mod download
 
 COPY . ./
 
-RUN go build -o jet
+RUN go build -o /app/jet
+
+FROM alpine
+
+WORKDIR /app
+
+COPY --from=Builder /app/jet /app/jet
 
 VOLUME ["/jet"]
-
 
 EXPOSE 8080
 EXPOSE 8081/udp
