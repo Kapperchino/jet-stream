@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 
 
-shardCount: 5
+shardCount: 1
 
 replicaCount: 3
 
