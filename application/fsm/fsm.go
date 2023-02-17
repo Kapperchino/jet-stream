@@ -3,7 +3,7 @@ package fsm
 import (
 	pb "github.com/Kapperchino/jet-application/proto/proto"
 	cluster "github.com/Kapperchino/jet-cluster"
-	"github.com/Kapperchino/jet/util"
+	"github.com/Kapperchino/jet-stream/util"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/hashicorp/raft"
 	"github.com/rs/zerolog"

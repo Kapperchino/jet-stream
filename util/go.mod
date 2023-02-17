@@ -1,9 +1,8 @@
-module github.com/Kapperchino/jet/util
+module github.com/Kapperchino/jet-stream/util
 
 go 1.19
 
 require (
-	github.com/Kapperchino/jet/config v0.0.0-20230125044125-5354e2e9eec3
 	github.com/rs/zerolog v1.28.0
 	google.golang.org/protobuf v1.28.1
 )

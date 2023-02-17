@@ -1,5 +1,5 @@
-github.com/Kapperchino/jet/config v0.0.0-20230125044125-5354e2e9eec3 h1:aGzRJ9a2e2xJjIMw5+AXzesLxQCLu/ncUb84v4BMf70=
-github.com/Kapperchino/jet/config v0.0.0-20230125044125-5354e2e9eec3/go.mod h1:4hfIjtwntyAotr4qkMuQ/5Fm080JUCJ5Bb5+EtfH9IM=
+github.com/Kapperchino/jet-stream/config v0.0.0-20230125044125-5354e2e9eec3 h1:aGzRJ9a2e2xJjIMw5+AXzesLxQCLu/ncUb84v4BMf70=
+github.com/Kapperchino/jet-stream/config v0.0.0-20230125044125-5354e2e9eec3/go.mod h1:4hfIjtwntyAotr4qkMuQ/5Fm080JUCJ5Bb5+EtfH9IM=
 github.com/coreos/go-systemd/v22 v22.3.3-0.20220203105225-a9a7ef127534/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
 github.com/godbus/dbus/v5 v5.0.4/go.mod h1:xhWf0FNVPg57R7Z0UbKHbJfkEywrmjJnf7w5xrFpKfA=
 github.com/golang/protobuf v1.5.0/go.mod h1:FsONVRAS9T7sI+LIUmWTfcYkHO4aIWwzhcaSAoJOfIk=

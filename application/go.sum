@@ -4,10 +4,6 @@ github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 h1:UQHMgLO+TxOEl
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/DataDog/datadog-go v2.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
 github.com/DataDog/datadog-go v3.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
-github.com/Kapperchino/jet/config v0.0.0-20230122062940-fb9c7e744c6b h1:5g+cPLNpOVA/8cZJuRur8vgPYm+xQsp45DTOE9k9Wfg=
-github.com/Kapperchino/jet/config v0.0.0-20230122062940-fb9c7e744c6b/go.mod h1:4hfIjtwntyAotr4qkMuQ/5Fm080JUCJ5Bb5+EtfH9IM=
-github.com/Kapperchino/jet/util v0.0.0-20230122062940-fb9c7e744c6b h1:Bb3m66yN0O8Qp4g8UJ52gOMEj5rT8pOnLnZLepazi6s=
-github.com/Kapperchino/jet/util v0.0.0-20230122062940-fb9c7e744c6b/go.mod h1:aKcLNSvMcurHgP+/Uae8UXldijBDKXiTPtJNGQT8Npo=
 github.com/Microsoft/go-winio v0.5.2 h1:a9IhgEQBCUEk6QCdml9CiJGhAws+YwffDHEMp1VMrpA=
 github.com/Microsoft/hcsshim v0.9.5 h1:AbV+VPfTrIVffukazHcpxmz/sRiE6YaMDzHWR9BXZHo=
 github.com/OneOfOne/xxhash v1.2.2 h1:KMrpdQIwFcEqXDklaen+P1axHaj9BSKzvpUUfnHldSE=

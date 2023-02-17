@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"github.com/Kapperchino/jet/factory"
+	"github.com/Kapperchino/jet-stream/factory"
 	"github.com/rs/zerolog/log"
 	"os"
 )

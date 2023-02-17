@@ -3,7 +3,7 @@ package test
 import (
 	"context"
 	pb "github.com/Kapperchino/jet-application/proto/proto"
-	"github.com/Kapperchino/jet/factory"
+	"github.com/Kapperchino/jet-stream/factory"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	vtgrpc "github.com/planetscale/vtprotobuf/codec/grpc"
 	"github.com/rs/zerolog/log"

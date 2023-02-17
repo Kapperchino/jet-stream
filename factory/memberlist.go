@@ -2,7 +2,7 @@ package factory
 
 import (
 	"fmt"
-	"github.com/Kapperchino/jet/util"
+	"github.com/Kapperchino/jet-stream/util"
 	"github.com/hashicorp/memberlist"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"

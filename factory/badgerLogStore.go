@@ -3,7 +3,7 @@ package factory
 import (
 	"bytes"
 	"errors"
-	"github.com/Kapperchino/jet/util"
+	"github.com/Kapperchino/jet-stream/util"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/hashicorp/go-msgpack/codec"
 	"github.com/hashicorp/raft"

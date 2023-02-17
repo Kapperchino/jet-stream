@@ -3,7 +3,7 @@ package test
 import (
 	pb "github.com/Kapperchino/jet-application/proto/proto"
 	client "github.com/Kapperchino/jet-client"
-	"github.com/Kapperchino/jet/factory"
+	"github.com/Kapperchino/jet-stream/factory"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"

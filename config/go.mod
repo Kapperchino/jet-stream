@@ -1,4 +1,4 @@
-module github.com/Kapperchino/jet/config
+module github.com/Kapperchino/jet-stream/config
 
 go 1.19
 

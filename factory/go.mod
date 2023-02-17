@@ -1,4 +1,4 @@
-module github.com/Kapperchino/jet/factory
+module github.com/Kapperchino/jet-stream/factory
 
 go 1.19
 

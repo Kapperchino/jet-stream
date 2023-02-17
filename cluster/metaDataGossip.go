@@ -2,7 +2,7 @@ package cluster
 
 import (
 	"github.com/Kapperchino/jet-cluster/proto/proto"
-	"github.com/Kapperchino/jet/util"
+	"github.com/Kapperchino/jet-stream/util"
 	"github.com/alphadose/haxmap"
 	"github.com/hashicorp/raft"
 	"github.com/rs/zerolog"

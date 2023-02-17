@@ -1,7 +1,7 @@
 package fsm
 
 import (
-	"github.com/Kapperchino/jet/util"
+	"github.com/Kapperchino/jet-stream/util"
 )
 
 func makePrefix(topic string, partition uint64) []byte {
