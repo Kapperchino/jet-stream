@@ -1,6 +1,6 @@
 module github.com/Kapperchino/jet-leader-rpc
 
-go 1.19
+go 1.20
 
 require (
 	github.com/hashicorp/raft v1.3.10

@@ -1,6 +1,6 @@
 module github.com/Kapperchino/jet-stream
 
-go 1.19
+go 1.20
 
 require github.com/rs/zerolog v1.28.0
 

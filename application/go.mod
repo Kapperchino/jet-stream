@@ -1,6 +1,6 @@
 module github.com/Kapperchino/jet-application
 
-go 1.19
+go 1.20
 
 require (
 	github.com/dgraph-io/badger/v3 v3.2103.5

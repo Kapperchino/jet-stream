@@ -21,8 +21,8 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
         - name: jet-pod
-          image: "jet:0.04"
-          imagePullPolicy: Never
+          image: "us-east4-docker.pkg.dev/pelagic-pod-378704/dev/jet:0.05"
+          imagePullPolicy: IfNotPresent
           args:
             - --raft_data_dir
             - /usr/share/jet

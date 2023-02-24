@@ -7,9 +7,12 @@ shardCount: 1
 
 replicaCount: 3
 
+provider: "gcloud"
+
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
+
 
 serviceAccount:
   # Specifies whether a service account should be created

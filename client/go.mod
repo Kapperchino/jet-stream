@@ -1,6 +1,6 @@
 module github.com/Kapperchino/jet-client
 
-go 1.19
+go 1.20
 
 require (
 	github.com/alphadose/haxmap v1.2.0
