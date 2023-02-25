@@ -18,7 +18,7 @@ require (
 	github.com/alphadose/haxmap v1.2.0 // indirect
 	github.com/buraksezer/consistent v0.10.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
-	github.com/containerd/containerd v1.6.17 // indirect
+	github.com/containerd/containerd v1.6.18 // indirect
 	github.com/deckarep/golang-set/v2 v2.1.0 // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/docker v23.0.0+incompatible // indirect
