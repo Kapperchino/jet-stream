@@ -3,8 +3,10 @@ go 1.20
 use (
 	.
 	./application
+	./application/proto
 	./client
 	./cluster
+	./cluster/proto
 	./config
 	./factory
 	./leader-rpc

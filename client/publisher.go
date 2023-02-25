@@ -3,7 +3,7 @@ package client
 import (
 	"context"
 	"errors"
-	"github.com/Kapperchino/jet-application/proto/proto"
+	"github.com/Kapperchino/jet-stream/application/proto/proto"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 	"strconv"

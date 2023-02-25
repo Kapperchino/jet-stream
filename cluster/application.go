@@ -2,7 +2,7 @@ package cluster
 
 import (
 	"context"
-	pb "github.com/Kapperchino/jet-cluster/proto/proto"
+	pb "github.com/Kapperchino/jet-stream/cluster/proto/proto"
 	"github.com/alphadose/haxmap"
 	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/raft"

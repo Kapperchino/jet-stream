@@ -2,9 +2,9 @@ package test
 
 import (
 	"context"
-	adminPb "github.com/Kapperchino/jet-admin/proto/proto"
-	clusterPb "github.com/Kapperchino/jet-cluster/proto/proto"
+	clusterPb "github.com/Kapperchino/jet-stream/cluster/proto/proto"
 	"github.com/Kapperchino/jet-stream/factory"
+	adminPb "github.com/Kapperchino/jet-stream/raftadmin/proto/proto"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"

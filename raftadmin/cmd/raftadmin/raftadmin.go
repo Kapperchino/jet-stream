@@ -10,14 +10,11 @@ import (
 	"strconv"
 	"strings"
 
-	pb "github.com/Kapperchino/jet-admin/proto/proto"
+	pb "github.com/Kapperchino/jet-stream/raftadmin/proto/proto"
 	"github.com/iancoleman/strcase"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/reflect/protoreflect"
-
-	// Allow dialing multiple nodes with multi:///.
-	_ "github.com/Jille/grpc-multi-resolver"
 
 	// Register health checker with gRPC.
 	_ "google.golang.org/grpc/health"

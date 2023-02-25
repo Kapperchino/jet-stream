@@ -3,7 +3,8 @@ module github.com/Kapperchino/jet-stream/util
 go 1.20
 
 require (
-	github.com/rs/zerolog v1.28.0
+	github.com/Kapperchino/jet-stream/config v0.0.0-20230224231539-f953585863f9
+	github.com/rs/zerolog v1.29.0
 	google.golang.org/protobuf v1.28.1
 )
 

@@ -1,7 +1,7 @@
 package fsm
 
 import (
-	"github.com/Kapperchino/jet-application/proto/proto"
+	"github.com/Kapperchino/jet-stream/application/proto/proto"
 )
 
 func (f *NodeState) GetMeta() (*proto.GetMetaResponse, error) {

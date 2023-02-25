@@ -2,18 +2,18 @@ package factory
 
 import (
 	"fmt"
-	raftadmin "github.com/Kapperchino/jet-admin"
-	application "github.com/Kapperchino/jet-application"
-	"github.com/Kapperchino/jet-application/fsm"
-	"github.com/Kapperchino/jet-application/fsm/handlers"
-	pb "github.com/Kapperchino/jet-application/proto/proto"
-	cluster "github.com/Kapperchino/jet-cluster"
-	clusterPb "github.com/Kapperchino/jet-cluster/proto/proto"
-	"github.com/Kapperchino/jet-leader-rpc/leaderhealth"
+	application "github.com/Kapperchino/jet-stream/application"
+	"github.com/Kapperchino/jet-stream/application/fsm"
+	"github.com/Kapperchino/jet-stream/application/fsm/handlers"
+	pb "github.com/Kapperchino/jet-stream/application/proto/proto"
+	cluster "github.com/Kapperchino/jet-stream/cluster"
+	clusterPb "github.com/Kapperchino/jet-stream/cluster/proto/proto"
 	"github.com/Kapperchino/jet-stream/config"
 	_ "github.com/Kapperchino/jet-stream/factory/vtprotoencoding"
+	"github.com/Kapperchino/jet-stream/leader-rpc/leaderhealth"
+	"github.com/Kapperchino/jet-stream/raftadmin"
+	"github.com/Kapperchino/jet-stream/transport"
 	"github.com/Kapperchino/jet-stream/util"
-	transport "github.com/Kapperchino/jet-transport"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/raft"
@@ -53,10 +53,10 @@ func NewRaft(myID, myAddress string, fsm raft.FSM, raftDir string) (*raft.Raft, 
 		return fmt.Sprintf("[%s] %s", myID, i)
 	}
 	c.Logger = hclog.New(&hclog.LoggerOptions{
-		Name:        "raft",
-		Level:       hclog.LevelFromString(""),
-		DisableTime: true,
-		Output:      util.NewRaftLogger(output),
+		Name:       "raft",
+		Level:      hclog.LevelFromString(""),
+		TimeFormat: "",
+		Output:     util.NewRaftLogger(output),
 	})
 
 	baseDir := filepath.Join(raftDir, myID)

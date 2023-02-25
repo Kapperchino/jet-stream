@@ -1,7 +1,7 @@
 package transport
 
 import (
-	pb "github.com/Kapperchino/jet-transport/proto/proto"
+	pb "github.com/Kapperchino/jet-stream/transport/proto/proto"
 	"github.com/hashicorp/raft"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )

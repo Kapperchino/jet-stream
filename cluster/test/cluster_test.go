@@ -2,7 +2,7 @@ package test
 
 import (
 	"context"
-	clusterPb "github.com/Kapperchino/jet-cluster/proto/proto"
+	clusterPb "github.com/Kapperchino/jet-stream/cluster/proto/proto"
 	"github.com/Kapperchino/jet-stream/factory"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/rs/zerolog/log"

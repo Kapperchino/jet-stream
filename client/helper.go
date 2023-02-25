@@ -1,8 +1,8 @@
 package client
 
 import (
-	"github.com/Kapperchino/jet-application/proto/proto"
-	clusterPb "github.com/Kapperchino/jet-cluster/proto/proto"
+	"github.com/Kapperchino/jet-stream/application/proto/proto"
+	clusterPb "github.com/Kapperchino/jet-stream/cluster/proto/proto"
 	"github.com/buraksezer/consistent"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"google.golang.org/grpc"

@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"testing"
 
-	transport "github.com/Kapperchino/jet-transport"
+	transport "github.com/Kapperchino/jet-stream/transport"
 	"github.com/hashicorp/raft"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"

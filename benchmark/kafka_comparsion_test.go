@@ -2,12 +2,10 @@ package benchmark
 
 import (
 	"context"
-	"github.com/Kapperchino/jet-application/proto/proto"
-	client2 "github.com/Kapperchino/jet-client"
+	"github.com/Kapperchino/jet-stream/application/proto/proto"
+	client2 "github.com/Kapperchino/jet-stream/client"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
-	"github.com/segmentio/kafka-go"
-	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"math/rand"
 	"testing"

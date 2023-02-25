@@ -1,7 +1,7 @@
 package cluster
 
 import (
-	fsmPb "github.com/Kapperchino/jet-application/proto/proto"
+	fsmPb "github.com/Kapperchino/jet-stream/application/proto/proto"
 	"github.com/Kapperchino/jet-stream/util"
 	"github.com/hashicorp/raft"
 	"time"

@@ -1,8 +1,8 @@
 package fsm
 
 import (
-	pb "github.com/Kapperchino/jet-application/proto/proto"
-	cluster "github.com/Kapperchino/jet-cluster"
+	pb "github.com/Kapperchino/jet-stream/application/proto/proto"
+	cluster "github.com/Kapperchino/jet-stream/cluster"
 )
 
 func (f *NodeState) AddMember(req *pb.AddMember) (interface{}, error) {

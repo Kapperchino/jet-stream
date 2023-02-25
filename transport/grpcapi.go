@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	pb "github.com/Kapperchino/jet-transport/proto/proto"
+	pb "github.com/Kapperchino/jet-stream/transport/proto/proto"
 	"github.com/hashicorp/raft"
 )
 
