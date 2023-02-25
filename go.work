@@ -4,6 +4,7 @@ use (
 	.
 	./application
 	./application/proto
+	./benchmark
 	./client
 	./cluster
 	./cluster/proto

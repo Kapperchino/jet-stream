@@ -3,4 +3,8 @@ go 1.20
 use (
 	.
 	../application
+	../application/proto
+	../cluster
+	../cluster/proto
+	../factory
 )
