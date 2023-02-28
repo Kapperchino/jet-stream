@@ -44,9 +44,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
-          readinessProbe:
-            grpc:
-              port: 8080
+          livenessProbe:
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:8080", "-connect-timeout=100ms", "-rpc-timeout=150ms"]
+            initialDelaySeconds: 3
           volumeMounts:
             - name: jet-volume
               mountPath: /tmp/jet-volume

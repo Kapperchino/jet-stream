@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: jet-lb
+  namespace: jet-stream
+  annotations:
+    cloud.google.com/app-protocols: '{"my-port":"HTTP2"}'
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 8080
+      name: my-port
+      targetPort: 8080
+  selector:
+    app: traefik
