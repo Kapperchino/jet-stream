@@ -11,6 +11,7 @@ metadata:
   annotations:
     cloud.google.com/app-protocols: '{"my-port":"HTTP2"}'
 spec:
+  type: NodePort
   selector:
     statefulset.kubernetes.io/pod-name: jet-shard-{{$v}}-{{$v1}}
   ports:

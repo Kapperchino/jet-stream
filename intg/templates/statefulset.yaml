@@ -21,7 +21,7 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
         - name: jet-pod
-          image: "us-east4-docker.pkg.dev/pelagic-pod-378704/dev/jet:0.05"
+          image: "us-east4-docker.pkg.dev/pelagic-pod-378704/dev/jet:0.09"
           imagePullPolicy: IfNotPresent
           args:
             - --raft_data_dir
@@ -45,9 +45,11 @@ spec:
                 fieldRef:
                   fieldPath: status.podIP
           livenessProbe:
-            exec:
-              command: ["/bin/grpc_health_probe", "-addr=:8080", "-connect-timeout=100ms", "-rpc-timeout=150ms"]
-            initialDelaySeconds: 3
+            grpc:
+              port: 8080
+          readinessProbe:
+            grpc:
+              port: 8080
           volumeMounts:
             - name: jet-volume
               mountPath: /tmp/jet-volume
