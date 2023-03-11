@@ -103,12 +103,12 @@ func NewRaft(myID, myAddress string, fsm raft.FSM, raftDir string) (*raft.Raft, 
 	return r, tm, nil
 }
 
-func SetupServer(badgerDir string, raftDir string, address string, nodeName string, gossipAddress string, rootNode string, server chan *Server, shardId string) {
-	_, _, err := net.SplitHostPort(address)
+func SetupServer(hostAddr string, badgerDir string, raftDir string, globalAdr string, nodeName string, gossipAddress string, rootNode string, server chan *Server, shardId string) {
+	_, _, err := net.SplitHostPort(hostAddr)
 	if err != nil {
-		log.Fatal().Msgf("failed to parse local address (%q): %v", address, err)
+		log.Fatal().Msgf("failed to parse local globalAdr (%q): %v", hostAddr, err)
 	}
-	sock, err := net.Listen("tcp", address)
+	sock, err := net.Listen("tcp", hostAddr)
 	if err != nil {
 		log.Fatal().Msgf("failed to listen: %v", err)
 	}
@@ -136,7 +136,7 @@ func SetupServer(badgerDir string, raftDir string, address string, nodeName stri
 		HandlerMap:   handlers.InitHandlers(),
 		Logger:       &nodeLogger,
 	}
-	r, tm, err := NewRaft(nodeName, address, nodeState, raftDir)
+	r, tm, err := NewRaft(nodeName, hostAddr, nodeState, raftDir)
 	if err != nil {
 		log.Fatal().Msgf("failed to start raft: %v", err)
 	}
@@ -151,7 +151,7 @@ func SetupServer(badgerDir string, raftDir string, address string, nodeName stri
 		Raft:         r,
 		Logger:       &clusterLog,
 	}
-	clusterRpc.ClusterState = cluster.InitClusterState(clusterRpc, nodeName, address, shardId, &clusterLog, r)
+	clusterRpc.ClusterState = cluster.InitClusterState(clusterRpc, nodeName, globalAdr, shardId, &clusterLog, r)
 	memberListener := cluster.InitClusterListener(clusterRpc.ClusterState)
 	memberList := NewMemberList(MakeConfig(nodeName, shardId, gossipAddress, memberListener, cluster.ClusterDelegate{
 		ClusterState: clusterRpc.ClusterState,

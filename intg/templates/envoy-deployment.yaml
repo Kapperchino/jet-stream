@@ -134,6 +134,8 @@ spec:
       labels:
         app: envoy
     spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
       containers:
       - image: envoyproxy/envoy:v1.24.0@sha256:9ae6b26d14ce92f67cd500cb3e5a89aa3351e013140f8b06c36619d929687ce0
         name: envoy

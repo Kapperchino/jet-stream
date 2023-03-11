@@ -8,7 +8,8 @@ import (
 )
 
 var (
-	myAddr        = flag.String("address", "", "TCP host+port for this node")
+	myAddr        = flag.String("address", "", "Where this node is hosted in a global context")
+	hostAddr      = flag.String("hostedAddr", "", "Where this node is hosted in a local context")
 	gossipAddress = flag.String("gossip_address", "", "address for gossip")
 	raftId        = flag.String("raft_id", "", "Node id used by Raft")
 
@@ -34,7 +35,9 @@ func main() {
 		}
 		*myAddr = addr + ":8080"
 	}
-
+	if *hostAddr == "" {
+		*hostAddr = "0.0.0.0:8080"
+	}
 	if *gossipAddress == "" {
 		addr := os.Getenv("POD_IP")
 		if addr == "" {
@@ -46,5 +49,5 @@ func main() {
 		log.Fatal().Msgf("Cannot have null shardId")
 	}
 	channel := make(chan *factory.Server, 5)
-	factory.SetupServer(*dataDir, *raftDir, *myAddr, *raftId, *gossipAddress, *rootNode, channel, *shardId)
+	factory.SetupServer(*hostAddr, *dataDir, *raftDir, *myAddr, *raftId, *gossipAddress, *rootNode, channel, *shardId)
 }

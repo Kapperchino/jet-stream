@@ -19,9 +19,11 @@ spec:
         app: jet # has to match .spec.selector.matchLabels
     spec:
       terminationGracePeriodSeconds: 10
+      nodeSelector:
+        kubernetes.io/arch: arm64
       containers:
         - name: jet-pod
-          image: "us-east4-docker.pkg.dev/pelagic-pod-378704/dev/jet:0.10"
+          image: "us-east4-docker.pkg.dev/pelagic-pod-378704/dev/jet:0.12"
           imagePullPolicy: IfNotPresent
           args:
             - --raft_data_dir
