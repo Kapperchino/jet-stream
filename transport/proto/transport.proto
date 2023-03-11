@@ -3,6 +3,8 @@ syntax = "proto3";
 option go_package = "./proto";
 import "google/protobuf/timestamp.proto";
 
+package transport;
+
 service RaftTransport {
   // AppendEntriesPipeline opens an AppendEntries message stream.
   rpc AppendEntriesPipeline(stream AppendEntriesRequest) returns (stream AppendEntriesResponse) {}

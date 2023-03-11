@@ -11,7 +11,7 @@ static_resources:
       address:
         socket_address:
           protocol: TCP
-          address: 0.0.0.0
+          address: "::"
           port_value: 8443
       filter_chains:
         - filters:
@@ -37,7 +37,7 @@ static_resources:
                       {{ range $k, $v := until ( $shards1 | int) }}
                       {{ range $k1, $v1 := until ( $replicas1 | int) }}
                         - match:
-                            prefix: "/jet/{{$k}}/{{$k1}}"
+                            prefix: "/jet-{{$k}}-{{$k1}}/"
                           route:
                             cluster: jet-{{$k}}-{{$k1}}-grpc
                       {{end}}

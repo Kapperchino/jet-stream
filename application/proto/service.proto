@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 option go_package = "./proto";
+package message;
 
 service MessageService {
   rpc PublishMessages(PublishMessageRequest) returns (PublishMessageResponse) {}
