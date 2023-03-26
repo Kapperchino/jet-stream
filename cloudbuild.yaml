@@ -1,0 +1,5 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [ 'build', '-t', 'us-east4-docker.pkg.dev/pelagic-pod-378704/dev/${_IMAGE}', '.' ]
+images:
+  - 'us-east4-docker.pkg.dev/pelagic-pod-378704/dev/${_IMAGE}'

@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jet-ingress
+  namespace: jet-stream
+  annotations:
+    cloud.google.com/backend-config: '{"default": "jet-backend-config"}'
+spec:
+  rules:
+    - http:
+        paths:
+        {{ $replicas := .Values.replicaCount}}
+        {{ $shards := .Values.shardCount}}
+        {{ range $k, $v := until ( $shards| int) }}
+        {{ range $k1,$v1 := until ( $replicas | int)}}
+          - path: /jet-{{$k}}-{{$k1}}
+            pathType: Prefix
+            backend:
+              service:
+                name: jet-service-{{$k}}-{{$k1}}
+                port:
+                  number: 8080
+        {{end}}
+        {{end}}

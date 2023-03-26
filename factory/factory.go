@@ -19,9 +19,11 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -168,7 +170,38 @@ func SetupServer(hostAddr string, badgerDir string, raftDir string, globalAdr st
 		Grpc:       s,
 		MemberList: memberList,
 	}
-	if err := s.Serve(sock); err != nil {
-		log.Fatal().Msgf("failed to serve: %v", err)
+
+	// Set up your HTTP server and register your health check handler.
+	http.HandleFunc("/healthz", healthz)
+	httpServer := &http.Server{}
+
+	// Create a cmux instance.
+	mux := cmux.New(sock)
+
+	// Match gRPC first.
+	grpcListener := mux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
+	httpListener := mux.Match(cmux.HTTP1Fast())
+
+	// Serve gRPC and HTTP servers concurrently.
+	go func() {
+		if err := s.Serve(grpcListener); err != nil {
+			log.Fatal().Msgf("failed to serve gRPC server: %v", err)
+		}
+	}()
+
+	go func() {
+		if err := httpServer.Serve(httpListener); err != nil {
+			log.Fatal().Msgf("failed to serve HTTP server: %v", err)
+		}
+	}()
+
+	// Start the cmux server.
+	if err := mux.Serve(); err != nil {
+		log.Fatal().Msgf("failed to serve cmux server: %v", err)
 	}
+}
+
+func healthz(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }
