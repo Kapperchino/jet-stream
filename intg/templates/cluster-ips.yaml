@@ -8,8 +8,9 @@ metadata:
   name: jet-service-{{$k}}-{{$k1}}
   namespace: jet-stream
   annotations:
-    cloud.google.com/app-protocols: '{"my-port":"HTTP2"}'
+    cloud.google.com/app-protocols: '{"web":"HTTP2"}'
     cloud.google.com/neg: '{"ingress": true}'
+    cloud.google.com/backend-config: '{"default": "jet-backend-config"}'
 spec:
   ports:
     - port: 8080

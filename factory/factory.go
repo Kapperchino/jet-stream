@@ -180,7 +180,7 @@ func SetupServer(hostAddr string, badgerDir string, raftDir string, globalAdr st
 
 	// Match gRPC first.
 	grpcListener := mux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
-	httpListener := mux.Match(cmux.HTTP1Fast())
+	httpListener := mux.Match(cmux.HTTP1())
 
 	// Serve gRPC and HTTP servers concurrently.
 	go func() {
@@ -204,4 +204,5 @@ func SetupServer(hostAddr string, badgerDir string, raftDir string, globalAdr st
 func healthz(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
+	//w.Header().Add("Content-Type", "text")
 }
