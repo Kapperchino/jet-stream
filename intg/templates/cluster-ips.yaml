@@ -16,6 +16,9 @@ spec:
     - port: 8080
       targetPort: 8080
       name: web
+    - port: 8082
+      targetPort: 8082
+      name: health
   selector:
     statefulset.kubernetes.io/pod-name: jet-shard-{{$v}}-{{$v1}}
 ---

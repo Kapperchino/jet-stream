@@ -19,7 +19,6 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"net"
@@ -114,6 +113,11 @@ func SetupServer(hostAddr string, badgerDir string, raftDir string, globalAdr st
 	if err != nil {
 		log.Fatal().Msgf("failed to listen: %v", err)
 	}
+
+	healthSock, err := net.Listen("tcp", "0.0.0.0:8082")
+	if err != nil {
+		log.Fatal().Msgf("failed to listen: %v", err)
+	}
 	defaultOutput := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006/01/02 15:04:05"}
 	defaultOutput.FormatLevel = func(i interface{}) string {
 		return strings.ToUpper(fmt.Sprintf("[%-4s]", i))
@@ -175,29 +179,14 @@ func SetupServer(hostAddr string, badgerDir string, raftDir string, globalAdr st
 	http.HandleFunc("/healthz", healthz)
 	httpServer := &http.Server{}
 
-	// Create a cmux instance.
-	mux := cmux.New(sock)
-
-	// Match gRPC first.
-	grpcListener := mux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
-	httpListener := mux.Match(cmux.HTTP1())
-
-	// Serve gRPC and HTTP servers concurrently.
 	go func() {
-		if err := s.Serve(grpcListener); err != nil {
-			log.Fatal().Msgf("failed to serve gRPC server: %v", err)
-		}
-	}()
-
-	go func() {
-		if err := httpServer.Serve(httpListener); err != nil {
+		if err := httpServer.Serve(healthSock); err != nil {
 			log.Fatal().Msgf("failed to serve HTTP server: %v", err)
 		}
 	}()
-
-	// Start the cmux server.
-	if err := mux.Serve(); err != nil {
-		log.Fatal().Msgf("failed to serve cmux server: %v", err)
+	// Serve gRPC and HTTP servers concurrently.
+	if err := s.Serve(sock); err != nil {
+		log.Fatal().Msgf("failed to serve gRPC server: %v", err)
 	}
 }
 
