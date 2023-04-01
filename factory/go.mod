@@ -9,6 +9,7 @@ require (
 	github.com/Kapperchino/jet-stream/transport v0.0.0-20230225202306-4020fc0a51bf
 	github.com/Kapperchino/jet-stream/util v0.0.0-20230225202306-4020fc0a51bf
 	github.com/dgraph-io/badger/v3 v3.2103.5
+	github.com/etherlabsio/healthcheck v0.0.0-20191224061800-dd3d2fd8c3f6
 	github.com/golang/protobuf v1.5.2
 	github.com/hashicorp/go-hclog v0.9.1
 	github.com/hashicorp/go-msgpack v0.5.5
@@ -41,7 +42,6 @@ require (
 	github.com/miekg/dns v1.1.26 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect
-	github.com/soheilhy/cmux v0.1.5 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.6.0 // indirect
 	golang.org/x/net v0.7.0 // indirect

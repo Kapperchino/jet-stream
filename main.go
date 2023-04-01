@@ -48,6 +48,9 @@ func main() {
 	if *shardId == "" {
 		log.Fatal().Msgf("Cannot have null shardId")
 	}
+	if *dataDir == "" {
+		log.Fatal().Msgf("Cannot have null data_dir")
+	}
 	channel := make(chan *factory.Server, 5)
 	factory.SetupServer(*hostAddr, *dataDir, *raftDir, *myAddr, *raftId, *gossipAddress, *rootNode, channel, *shardId)
 }

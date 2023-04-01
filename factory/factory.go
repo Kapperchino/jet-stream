@@ -14,6 +14,8 @@ import (
 	"github.com/Kapperchino/jet-stream/raftadmin"
 	"github.com/Kapperchino/jet-stream/transport"
 	"github.com/Kapperchino/jet-stream/util"
+	"github.com/etherlabsio/healthcheck"
+	"github.com/etherlabsio/healthcheck/checkers"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/raft"
@@ -26,6 +28,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type Server struct {
@@ -133,8 +136,8 @@ func SetupServer(hostAddr string, badgerDir string, raftDir string, globalAdr st
 	outputWithNode.FormatFieldName = func(i interface{}) string {
 		return fmt.Sprintf("%s:", i)
 	}
-	db, _ := NewBadger(badgerDir + nodeName + "/Meta")
-	messages, _ := NewBadger("./testData/badger/" + nodeName + "/Messages")
+	db, _ := NewBadger(badgerDir + "/" + nodeName + "/Meta")
+	messages, _ := NewBadger(badgerDir + "/" + nodeName + "/Messages")
 	nodeLogger := log.Level(config.LOG_LEVEL).Output(outputWithNode)
 	nodeState := &fsm.NodeState{
 		MetaStore:    db,
@@ -176,7 +179,13 @@ func SetupServer(hostAddr string, badgerDir string, raftDir string, globalAdr st
 	}
 
 	// Set up your HTTP server and register your health check handler.
-	http.HandleFunc("/healthz", healthz)
+	http.Handle("/healthz", healthcheck.Handler(
+		// WithTimeout allows you to set a max overall timeout.
+		healthcheck.WithTimeout(5*time.Second),
+		healthcheck.WithObserver(
+			"diskspace", checkers.DiskSpace(badgerDir, 90),
+		),
+	))
 	httpServer := &http.Server{}
 
 	go func() {
