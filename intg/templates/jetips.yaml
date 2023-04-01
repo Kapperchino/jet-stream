@@ -1,0 +1,26 @@
+{{ $replicas := .Values.replicaCount}}
+{{ $shards := .Values.shardCount}}
+{{ range $k, $v := until ( $shards| int) }}
+{{ range $k1,$v1 := until ( $replicas | int)}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: jet-service-{{$k}}-{{$k1}}
+  namespace: jet-stream
+  annotations:
+    cloud.google.com/app-protocols: '{"web":"HTTP2"}'
+    cloud.google.com/neg: '{"ingress": true}'
+    cloud.google.com/backend-config: '{"default": "jet-backend-config"}'
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: web
+    - port: 8082
+      targetPort: 8082
+      name: health
+  selector:
+    statefulset.kubernetes.io/pod-name: jet-shard-{{$v}}-{{$v1}}
+---
+{{end}}
+{{end}}

@@ -7,7 +7,7 @@ shardCount: 1
 
 replicaCount: 3
 
-provider: ""
+provider: "gcloud"
 
 imagePullSecrets: []
 nameOverride: ""

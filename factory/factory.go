@@ -198,9 +198,3 @@ func SetupServer(hostAddr string, badgerDir string, raftDir string, globalAdr st
 		log.Fatal().Msgf("failed to serve gRPC server: %v", err)
 	}
 }
-
-func healthz(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
-	//w.Header().Add("Content-Type", "text")
-}

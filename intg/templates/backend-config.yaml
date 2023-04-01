@@ -1,3 +1,5 @@
+{{ $provider := .Values.provider}}
+{{- if eq $provider "gcloud" }}
 apiVersion: cloud.google.com/v1
 kind: BackendConfig
 metadata:
@@ -8,3 +10,4 @@ spec:
     port: 8082
     requestPath: /healthz
     type: HTTP
+    {{end}}

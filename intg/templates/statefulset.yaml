@@ -25,7 +25,9 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - --raft_data_dir
-            - /usr/share/jet
+            - /tmp/jet-volume/jet
+            - --data_dir
+            - /tmp/jet-volume/jet
             - --root_node
             - jet-shard-0-0.jet-service.jet-stream.svc.cluster.local:8081
             - --shard_id
