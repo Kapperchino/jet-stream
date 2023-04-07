@@ -1,0 +1,11 @@
+{{/*{{ $provider := .Values.provider}}*/}}
+{{/*{{- if eq $provider "gcloud" }}*/}}
+{{/*apiVersion: networking.gke.io/v1*/}}
+{{/*kind: ManagedCertificate*/}}
+{{/*metadata:*/}}
+{{/*  name: managed-cert*/}}
+{{/*  namespace: jet-stream*/}}
+{{/*spec:*/}}
+{{/*  domains:*/}}
+{{/*    - gojet.dev*/}}
+{{/*    {{end}}*/}}

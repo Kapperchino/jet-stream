@@ -1,13 +1,13 @@
-{{ $provider := .Values.provider}}
-{{- if eq $provider "gcloud" }}
-apiVersion: cloud.google.com/v1
-kind: BackendConfig
-metadata:
-  name: jet-backend-config
-  namespace: jet-stream
-spec:
-  healthCheck:
-    port: 8082
-    requestPath: /healthz
-    type: HTTP
-    {{end}}
+{{/*{{ $provider := .Values.provider}}*/}}
+{{/*{{- if eq $provider "gcloud" }}*/}}
+{{/*apiVersion: cloud.google.com/v1*/}}
+{{/*kind: BackendConfig*/}}
+{{/*metadata:*/}}
+{{/*  name: jet-backend-config*/}}
+{{/*  namespace: jet-stream*/}}
+{{/*spec:*/}}
+{{/*  healthCheck:*/}}
+{{/*    port: 8082*/}}
+{{/*    requestPath: /healthz*/}}
+{{/*    type: HTTP*/}}
+{{/*    {{end}}*/}}

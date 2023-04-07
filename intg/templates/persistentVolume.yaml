@@ -1,24 +1,24 @@
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  namespace: jet-stream
-  name: jet-volume
-spec:
-  storageClassName: manual
-  capacity:
-    storage: 1Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: /tmp/jet-volume
----
+{{/*apiVersion: v1*/}}
+{{/*kind: PersistentVolume*/}}
+{{/*metadata:*/}}
+{{/*  namespace: jet-stream*/}}
+{{/*  name: jet-volume*/}}
+{{/*spec:*/}}
+{{/*  storageClassName: manual*/}}
+{{/*  capacity:*/}}
+{{/*    storage: 1Gi*/}}
+{{/*  accessModes:*/}}
+{{/*    - ReadWriteOnce*/}}
+{{/*  hostPath:*/}}
+{{/*    path: /tmp/jet-volume*/}}
+{{/*---*/}}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   namespace: jet-stream
   name: jet-volume-claim
 spec:
-  storageClassName: manual
+  storageClassName: standard-rwo
   accessModes:
     - ReadWriteOnce
   resources:
