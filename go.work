@@ -5,6 +5,7 @@ use (
 	./application
 	./application/proto
 	./benchmark
+	./cli
 	./client
 	./cluster
 	./cluster/proto
