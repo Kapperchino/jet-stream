@@ -8,18 +8,16 @@ import (
 )
 
 func main() {
+	jetCli, err := startUpCli()
+	log.Fatal().Err(err)
 	app := &cli.App{
 		EnableBashCompletion: true,
-		Usage:                "Cli client for jet-stream, helps with managing and testing the cluster",
+		Usage:                "JetCli client for jet-stream, helps with managing and testing the cluster",
 		Commands: []*cli.Command{
 			{
 				Name:    "publisher",
 				Aliases: []string{"p"},
 				Usage:   "Publisher commands",
-				Action: func(cCtx *cli.Context) error {
-					fmt.Println("added task: ", cCtx.Args().First())
-					return nil
-				},
 				Subcommands: []*cli.Command{
 					{
 						Flags: []cli.Flag{
@@ -44,10 +42,7 @@ func main() {
 						Name:    "publish",
 						Aliases: []string{"pub"},
 						Usage:   "publish to a topic",
-						Action: func(cCtx *cli.Context) error {
-							fmt.Println("new task template: ", cCtx.Args().First())
-							return nil
-						},
+						Action:  jetCli.publish,
 					},
 				},
 			},
@@ -177,6 +172,20 @@ func main() {
 							fmt.Println("removed task template: ", cCtx.Args().First())
 							return nil
 						},
+					},
+				},
+			},
+			{
+				Name:    "init",
+				Aliases: []string{"i"},
+				Usage:   "Initializes the cli",
+				Action:  initialize,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "address",
+						Usage:    "address of a node",
+						Aliases:  []string{"a"},
+						Required: true,
 					},
 				},
 			},
