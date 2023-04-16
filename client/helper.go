@@ -30,7 +30,7 @@ func newMessageClient(conn *grpc.ClientConn) proto.MessageServiceClient {
 }
 
 func newClientConnection(address string) (*grpc.ClientConn, error) {
-	serviceConfig := `{"healthCheckConfig": {"serviceName": "Example"}, "loadBalancingConfig": [ { "round_robin": {} } ]}`
+	serviceConfig := `{"healthCheckConfig": {"serviceName": "cluster.ClusterMetaService"}, "loadBalancingConfig": [ { "round_robin": {} } ]}`
 	retryOpts := []grpc_retry.CallOption{
 		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(100 * time.Millisecond)),
 		grpc_retry.WithMax(5),

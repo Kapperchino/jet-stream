@@ -108,10 +108,19 @@ func New(address string) (*JetClient, error) {
 			//updating the map
 			var item, exists = metaData.topics.Get(key)
 			if !exists {
-				metaData.topics.Set(key, &TopicMeta{
+				topicMeta := &TopicMeta{
 					partitions: haxmap.New[uint64, *PartitionMeta](),
 					hash:       newHashRing(),
-				})
+				}
+				for _, partition := range topic.Partitions {
+					topicMeta.partitions.Set(partition.Num, &PartitionMeta{
+						partitionNum: partition.Num,
+						topic:        topic.Name,
+						shardId:      shardId,
+					})
+				}
+				metaData.topics.Set(key, topicMeta)
+				item = topicMeta
 			}
 			partitions := item.partitions
 			for num, partition := range topic.Partitions {

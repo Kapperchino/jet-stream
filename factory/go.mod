@@ -9,7 +9,6 @@ require (
 	github.com/Kapperchino/jet-stream/transport v0.0.0-20230225202306-4020fc0a51bf
 	github.com/Kapperchino/jet-stream/util v0.0.0-20230225202306-4020fc0a51bf
 	github.com/dgraph-io/badger/v3 v3.2103.5
-	github.com/etherlabsio/healthcheck v0.0.0-20191224061800-dd3d2fd8c3f6
 	github.com/golang/protobuf v1.5.2
 	github.com/hashicorp/go-hclog v0.9.1
 	github.com/hashicorp/go-msgpack v0.5.5

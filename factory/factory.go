@@ -14,8 +14,6 @@ import (
 	"github.com/Kapperchino/jet-stream/raftadmin"
 	"github.com/Kapperchino/jet-stream/transport"
 	"github.com/Kapperchino/jet-stream/util"
-	"github.com/etherlabsio/healthcheck"
-	"github.com/etherlabsio/healthcheck/checkers"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/raft"
@@ -24,11 +22,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"net"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 type Server struct {
@@ -117,10 +113,6 @@ func SetupServer(hostAddr string, badgerDir string, raftDir string, globalAdr st
 		log.Fatal().Msgf("failed to listen: %v", err)
 	}
 
-	healthSock, err := net.Listen("tcp", "0.0.0.0:8082")
-	if err != nil {
-		log.Fatal().Msgf("failed to listen: %v", err)
-	}
 	defaultOutput := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006/01/02 15:04:05"}
 	defaultOutput.FormatLevel = func(i interface{}) string {
 		return strings.ToUpper(fmt.Sprintf("[%-4s]", i))
@@ -169,7 +161,7 @@ func SetupServer(hostAddr string, badgerDir string, raftDir string, globalAdr st
 	nodeState.ShardState = clusterRpc.ClusterState.CurShardState
 	clusterPb.RegisterClusterMetaServiceServer(s, clusterRpc)
 	tm.Register(s)
-	leaderhealth.Setup(r, s, []string{"Example", "ClusterMetaService", "", "MessageService", "RaftTransport"})
+	leaderhealth.Setup(r, s, []string{"cluster.ClusterMetaService", "", "message.MessageService", "transport.RaftTransport"})
 	raftadmin.Register(s, r)
 	reflection.Register(s)
 	server <- &Server{
@@ -178,21 +170,6 @@ func SetupServer(hostAddr string, badgerDir string, raftDir string, globalAdr st
 		MemberList: memberList,
 	}
 
-	// Set up your HTTP server and register your health check handler.
-	http.Handle("/healthz", healthcheck.Handler(
-		// WithTimeout allows you to set a max overall timeout.
-		healthcheck.WithTimeout(5*time.Second),
-		healthcheck.WithObserver(
-			"diskspace", checkers.DiskSpace(badgerDir, 90),
-		),
-	))
-	httpServer := &http.Server{}
-
-	go func() {
-		if err := httpServer.Serve(healthSock); err != nil {
-			log.Fatal().Msgf("failed to serve HTTP server: %v", err)
-		}
-	}()
 	// Serve gRPC and HTTP servers concurrently.
 	if err := s.Serve(sock); err != nil {
 		log.Fatal().Msgf("failed to serve gRPC server: %v", err)
