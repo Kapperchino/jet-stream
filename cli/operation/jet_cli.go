@@ -18,14 +18,14 @@ type CliMeta struct {
 	Address string
 }
 
-func StartUpCli() (*JetCli, error) {
+func NewJetCli() (*JetCli, error) {
 	dir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
 	}
 	_, err = os.Stat(dir + CliDir + CliFile)
 	if err != nil && errors.Is(err, os.ErrNotExist) {
-		log.Warn().Msgf("Config does not exist, please run init")
+		log.Warn().Msgf("Config does not exist, please run InitOperator")
 		return nil, nil
 	} else if err != nil {
 		return nil, err
@@ -40,29 +40,20 @@ func StartUpCli() (*JetCli, error) {
 		return nil, err
 	}
 	jetClient, err := client.New(meta.Address)
-	return &JetCli{client: jetClient}, nil
+
+	operators := []Operation{&Publisher{client: jetClient}, &Consumer{client: jetClient}, &InitOperator{}}
+	return &JetCli{client: jetClient, operations: operators}, nil
 }
 
-func Initialize(cCtx *cli.Context) error {
-	dir, err := os.UserHomeDir()
-	if err != nil {
-		return err
+func (j JetCli) InitCli() (*cli.App, error) {
+	commands := make([]*cli.Command, 0)
+	for _, operation := range j.operations {
+		commands = append(commands, operation.GetCommand())
 	}
-	address := cCtx.String("address")
-	meta := CliMeta{
-		Address: address,
+	app := &cli.App{
+		EnableBashCompletion: true,
+		Usage:                "JetCli client for jet-stream, helps with managing and testing the cluster",
+		Commands:             commands,
 	}
-	buf, err := json.Marshal(meta)
-	if err != nil {
-		return err
-	}
-	err = os.Mkdir(dir+CliDir, 0755)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(dir+CliDir+CliFile, buf, 0644)
-	if err != nil {
-		return err
-	}
-	return nil
+	return app, nil
 }
