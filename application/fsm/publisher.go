@@ -15,7 +15,7 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 	}
 	var res []*pb.Message
 	newOffset := uint64(0)
-	key := makePrefix(req.Topic, req.Partition)
+	key := makeSeqKey(req.Topic, req.Partition)
 	seq, err := f.MessageStore.GetSequence(key, 1000)
 	defer seq.Release()
 	err = f.MessageStore.Update(func(tx *badger.Txn) error {

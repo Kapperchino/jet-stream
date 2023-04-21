@@ -2,20 +2,30 @@ package operation
 
 import (
 	"fmt"
+	"github.com/Kapperchino/jet-stream/application/proto/proto"
+	"github.com/Kapperchino/jet-stream/client"
+	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v2"
 )
 
 type Topic struct {
+	client *client.JetClient
 }
 
-func (t *Topic) process(cCtx *cli.Context) (any, error) {
-	//TODO implement me
-	panic("implement me")
+func (t *Topic) createTopic(cCtx *cli.Context) (*proto.CreateTopicResponse, error) {
+	topic := cCtx.String("topic")
+	partitions := cCtx.Int("partitions")
+	res, err := t.client.CreateTopic(topic, partitions)
+	if err != nil {
+		log.Fatal().Err(err)
+	}
+	return res, nil
 }
 
-func (t *Topic) Serialize(cCtx *cli.Context) error {
-	//TODO implement me
-	panic("implement me")
+func (t *Topic) createTopicAction(cCtx *cli.Context) error {
+	res, _ := t.createTopic(cCtx)
+	fmt.Printf("%v", res)
+	return nil
 }
 
 func (t *Topic) GetCommand() *cli.Command {
@@ -42,10 +52,7 @@ func (t *Topic) GetCommand() *cli.Command {
 				Name:    "create",
 				Aliases: []string{"cre"},
 				Usage:   "creates a new Topic",
-				Action: func(cCtx *cli.Context) error {
-					fmt.Println("new task template: ", cCtx.Args().First())
-					return nil
-				},
+				Action:  t.createTopicAction,
 			},
 			{
 				Name:    "list",
