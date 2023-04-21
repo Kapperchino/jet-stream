@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"github.com/Kapperchino/jet-stream/application/proto/proto"
 	"github.com/Kapperchino/jet-stream/client"
+	"github.com/Kapperchino/jet-stream/util"
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v2"
+	"strconv"
 )
 
 const CliDir = "/.config/jet-cli/"
@@ -15,7 +17,7 @@ type Publisher struct {
 	client *client.JetClient
 }
 
-func (p *Publisher) process(cCtx *cli.Context) (any, error) {
+func (p *Publisher) process(cCtx *cli.Context) (*proto.PublishMessageResponse, error) {
 	messageStr := cCtx.StringSlice("messages")
 	topic := cCtx.String("Topic")
 	arr := make([]*proto.KeyVal, 0)
@@ -35,7 +37,18 @@ func (p *Publisher) process(cCtx *cli.Context) (any, error) {
 
 func (p *Publisher) publish(cCtx *cli.Context) error {
 	res, _ := p.process(cCtx)
-	fmt.Printf("%v\n", res)
+	longest := 0
+	for _, message := range res.Messages {
+		longest = util.Max(longest, len(message.Key))
+		longest = util.Max(longest, len(message.Payload))
+	}
+	longest += 5
+	for _, message := range res.Messages {
+		fmt.Printf("key: %-"+strconv.Itoa(longest)+"s", message.Key)
+		fmt.Printf("val: %-"+strconv.Itoa(longest)+"s", message.Payload)
+		fmt.Printf("partition: %-5d", message.Partition)
+		fmt.Printf("offset: %-5v\n", message.Offset)
+	}
 	return nil
 }
 

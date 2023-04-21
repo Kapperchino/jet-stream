@@ -1,7 +1,6 @@
 package test
 
 import (
-	"github.com/Kapperchino/jet-stream/cli/util"
 	"github.com/Kapperchino/jet-stream/factory"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/suite"
@@ -36,7 +35,6 @@ func (suite *cliTest) SetupSuite() {
 	log.Print("Starting the server")
 	go factory.SetupServer(suite.address, testData, raftDir, suite.address, suite.nodeName, "localhost:8081", "", suite.servers, "shardA")
 	log.Print("Starting the client")
-	suite.cli = suite.setupClient(suite.address)
 }
 
 func (suite *cliTest) TearDownSuite() {
@@ -62,14 +60,6 @@ func (suite *cliTest) initFolders() {
 	if err := os.Mkdir(raftDir+"/nodeC/", os.ModePerm); err != nil {
 		log.Fatal().Err(err)
 	}
-}
-
-func (suite *cliTest) setupClient(address string) *cli.App {
-	app, err := util.InitCli()
-	if err != nil {
-		log.Fatal().Err(err)
-	}
-	return app
 }
 
 func cleanup() {

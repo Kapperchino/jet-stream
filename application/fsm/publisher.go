@@ -14,16 +14,6 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 		return nil, err
 	}
 	var res []*pb.Message
-	lastRaftIndex, err := f.getLastIndex(req.GetTopic(), int64(req.GetPartition()))
-	if err != nil {
-		f.Logger.Error().Msg("Cannot get the latest raftIndex")
-		f.Logger.Err(err)
-		return nil, err
-	}
-	//no op if messages has already been written
-	if lastRaftIndex >= raftIndex {
-		return nil, nil
-	}
 	newOffset := uint64(0)
 	key := makePrefix(req.Topic, req.Partition)
 	seq, err := f.MessageStore.GetSequence(key, 1000)
@@ -53,7 +43,6 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 				return err
 			}
 			res = append(res, newMsg)
-			return nil
 		}
 		return nil
 	})
@@ -62,7 +51,7 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 		f.Logger.Err(err)
 		return nil, err
 	}
-	f.Logger.Debug().Msgf("Publish %v messaged to partition %v topic %s", len(req.Messages), req.Partition, req.Topic)
+	f.Logger.Debug().Msgf("Publish %v messages to partition %v topic %s", len(req.Messages), req.Partition, req.Topic)
 	partition := curTopic.Partitions[req.Partition]
 	partition.Offset = newOffset
 	return res, nil
