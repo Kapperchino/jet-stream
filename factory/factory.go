@@ -33,6 +33,19 @@ type Server struct {
 	MemberList *memberlist.Memberlist
 }
 
+type JetConfig struct {
+	HostAddr      string
+	BadgerDir     string
+	RaftDir       string
+	GlobalAdr     string
+	NodeName      string
+	GossipAddress string
+	RootNode      string
+	Server        chan *Server
+	ShardId       string
+	InMemory      bool
+}
+
 func (s *Server) Kill() {
 	s.Grpc.Stop()
 	if s.MemberList != nil {
@@ -41,7 +54,7 @@ func (s *Server) Kill() {
 	s.Raft.Shutdown().Error()
 }
 
-func NewRaft(myID, myAddress string, fsm raft.FSM, raftDir string) (*raft.Raft, *transport.Manager, error) {
+func NewRaft(myID, myAddress string, fsm raft.FSM, raftDir string, inMem bool) (*raft.Raft, *transport.Manager, error) {
 	c := raft.DefaultConfig()
 	c.ProtocolVersion = raft.ProtocolVersionMax
 	c.LocalID = raft.ServerID(myID)
@@ -61,14 +74,14 @@ func NewRaft(myID, myAddress string, fsm raft.FSM, raftDir string) (*raft.Raft, 
 
 	baseDir := filepath.Join(raftDir, myID)
 	logDir := filepath.Join(baseDir, "logs")
-	db, err := NewBadger(logDir)
+	db, err := NewBadger(logDir, inMem)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`boltdb.NewBoltStore(%q): %v`, filepath.Join(baseDir, "logs.dat"), err)
 	}
 	ldb := BadgerLogStore{LogStore: db}
 
 	stableDir := filepath.Join(baseDir, "stable")
-	db, err = NewBadger(stableDir)
+	db, err = NewBadger(stableDir, inMem)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`boltdb.NewBoltStore(%q): %v`, filepath.Join(baseDir, "logs.dat"), err)
 	}
@@ -103,12 +116,12 @@ func NewRaft(myID, myAddress string, fsm raft.FSM, raftDir string) (*raft.Raft, 
 	return r, tm, nil
 }
 
-func SetupServer(hostAddr string, badgerDir string, raftDir string, globalAdr string, nodeName string, gossipAddress string, rootNode string, server chan *Server, shardId string) {
-	_, _, err := net.SplitHostPort(hostAddr)
+func SetupServer(jetConfig *JetConfig) {
+	_, _, err := net.SplitHostPort(jetConfig.HostAddr)
 	if err != nil {
-		log.Fatal().Msgf("failed to parse local globalAdr (%q): %v", hostAddr, err)
+		log.Fatal().Msgf("failed to parse local GlobalAdr (%q): %v", jetConfig.HostAddr, err)
 	}
-	sock, err := net.Listen("tcp", hostAddr)
+	sock, err := net.Listen("tcp", jetConfig.HostAddr)
 	if err != nil {
 		log.Fatal().Msgf("failed to listen: %v", err)
 	}
@@ -123,13 +136,13 @@ func SetupServer(hostAddr string, badgerDir string, raftDir string, globalAdr st
 	log.Logger = log.Output(defaultOutput)
 	outputWithNode := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006/01/02 15:04:05"}
 	outputWithNode.FormatLevel = func(i interface{}) string {
-		return fmt.Sprintf("[%s] ", nodeName) + strings.ToUpper(fmt.Sprintf("[%-4s]", i))
+		return fmt.Sprintf("[%s] ", jetConfig.NodeName) + strings.ToUpper(fmt.Sprintf("[%-4s]", i))
 	}
 	outputWithNode.FormatFieldName = func(i interface{}) string {
 		return fmt.Sprintf("%s:", i)
 	}
-	db, _ := NewBadger(badgerDir + "/" + nodeName + "/Meta")
-	messages, _ := NewBadger(badgerDir + "/" + nodeName + "/Messages")
+	db, _ := NewBadger(jetConfig.BadgerDir+"/"+jetConfig.NodeName+"/Meta", jetConfig.InMemory)
+	messages, _ := NewBadger(jetConfig.BadgerDir+"/"+jetConfig.NodeName+"/Messages", jetConfig.InMemory)
 	nodeLogger := log.Level(config.LOG_LEVEL).Output(outputWithNode)
 	nodeState := &fsm.NodeState{
 		MetaStore:    db,
@@ -137,7 +150,7 @@ func SetupServer(hostAddr string, badgerDir string, raftDir string, globalAdr st
 		HandlerMap:   handlers.InitHandlers(),
 		Logger:       &nodeLogger,
 	}
-	r, tm, err := NewRaft(nodeName, hostAddr, nodeState, raftDir)
+	r, tm, err := NewRaft(jetConfig.NodeName, jetConfig.HostAddr, nodeState, jetConfig.RaftDir, jetConfig.InMemory)
 	if err != nil {
 		log.Fatal().Msgf("failed to start raft: %v", err)
 	}
@@ -152,11 +165,11 @@ func SetupServer(hostAddr string, badgerDir string, raftDir string, globalAdr st
 		Raft:         r,
 		Logger:       &clusterLog,
 	}
-	clusterRpc.ClusterState = cluster.InitClusterState(clusterRpc, nodeName, globalAdr, shardId, &clusterLog, r)
+	clusterRpc.ClusterState = cluster.InitClusterState(clusterRpc, jetConfig.NodeName, jetConfig.GlobalAdr, jetConfig.ShardId, &clusterLog, r)
 	memberListener := cluster.InitClusterListener(clusterRpc.ClusterState)
-	memberList := NewMemberList(MakeConfig(nodeName, shardId, gossipAddress, memberListener, cluster.ClusterDelegate{
+	memberList := NewMemberList(MakeConfig(jetConfig.NodeName, jetConfig.ShardId, jetConfig.GossipAddress, memberListener, cluster.ClusterDelegate{
 		ClusterState: clusterRpc.ClusterState,
-	}), rootNode)
+	}), jetConfig.RootNode)
 	clusterRpc.MemberList = memberList
 	nodeState.ShardState = clusterRpc.ClusterState.CurShardState
 	clusterPb.RegisterClusterMetaServiceServer(s, clusterRpc)
@@ -164,7 +177,7 @@ func SetupServer(hostAddr string, badgerDir string, raftDir string, globalAdr st
 	leaderhealth.Setup(r, s, []string{"cluster.ClusterMetaService", "", "message.MessageService", "transport.RaftTransport"})
 	raftadmin.Register(s, r)
 	reflection.Register(s)
-	server <- &Server{
+	jetConfig.Server <- &Server{
 		Raft:       r,
 		Grpc:       s,
 		MemberList: memberList,
@@ -172,6 +185,6 @@ func SetupServer(hostAddr string, badgerDir string, raftDir string, globalAdr st
 
 	// Serve gRPC and HTTP servers concurrently.
 	if err := s.Serve(sock); err != nil {
-		log.Fatal().Msgf("failed to serve gRPC server: %v", err)
+		log.Fatal().Msgf("failed to serve gRPC Server: %v", err)
 	}
 }

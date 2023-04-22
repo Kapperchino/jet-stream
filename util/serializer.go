@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bytes"
 	"encoding/binary"
 	"github.com/Kapperchino/jet-stream/config"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -35,4 +36,10 @@ func LongToBytes(num int64) []byte {
 	b := make([]byte, 8)
 	binary.PutVarint(b, num)
 	return b
+}
+
+func IntToBytes(num int) []byte {
+	buf := new(bytes.Buffer)
+	binary.Write(buf, binary.LittleEndian, num)
+	return buf.Bytes()
 }

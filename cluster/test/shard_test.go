@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
-	"os"
 	"testing"
 	"time"
 )
@@ -31,14 +30,37 @@ type ShardsTest struct {
 // Make sure that VariableThatShouldStartAtFive is set to five
 // before each test
 func (suite *ShardsTest) SetupSuite() {
-	suite.initFolders()
 	suite.address = [2]string{"localhost:8080", "localhost:8082"}
 	suite.nodeName = [2]string{"nodeA", "nodeB"}
 	suite.servers = make(chan *factory.Server, 5)
 	log.Print("Starting the server")
-	go factory.SetupServer(suite.address[0], testData, raftDir, suite.address[0], suite.nodeName[0], "localhost:8081", "", suite.servers, "shardA")
+	go factory.SetupServer(
+		&factory.JetConfig{
+			HostAddr:      suite.address[0],
+			BadgerDir:     testData,
+			RaftDir:       raftDir,
+			GlobalAdr:     suite.address[0],
+			NodeName:      suite.nodeName[0],
+			GossipAddress: "localhost:8081",
+			RootNode:      "",
+			Server:        suite.servers,
+			ShardId:       "shardA",
+			InMemory:      true,
+		})
 	time.Sleep(5 * time.Second)
-	go factory.SetupServer(suite.address[1], testData, raftDir, suite.address[1], suite.nodeName[1], "localhost:8083", "localhost:8081", suite.servers, "shardA")
+	go factory.SetupServer(
+		&factory.JetConfig{
+			HostAddr:      suite.address[1],
+			BadgerDir:     testData,
+			RaftDir:       raftDir,
+			GlobalAdr:     suite.address[1],
+			NodeName:      suite.nodeName[1],
+			GossipAddress: "localhost:8083",
+			RootNode:      "localhost:8081",
+			Server:        suite.servers,
+			ShardId:       "shardA",
+			InMemory:      true,
+		})
 	log.Print("Starting the client")
 	suite.client[0] = suite.setupClient(suite.address[0])
 	suite.adminClient = suite.setupAdminClient(suite.address[0])
@@ -120,20 +142,8 @@ func TestShards(t *testing.T) {
 	suite.Run(t, new(ShardsTest))
 }
 
-func (suite *ShardsTest) initFolders() {
-	if err := os.MkdirAll(raftDir+"/nodeA/", os.ModePerm); err != nil {
-		log.Fatal().Err(err)
-	}
-	if err := os.Mkdir(raftDir+"/nodeB/", os.ModePerm); err != nil {
-		log.Fatal().Err(err)
-	}
-	if err := os.Mkdir(raftDir+"/nodeC/", os.ModePerm); err != nil {
-		log.Fatal().Err(err)
-	}
-}
-
 func (suite *ShardsTest) setupClient(address string) clusterPb.ClusterMetaServiceClient {
-	serviceConfig := `{"healthCheckConfig": {"serviceName": "Example"}, "loadBalancingConfig": [ { "round_robin": {} } ]}`
+	serviceConfig := `{"healthCheckConfig": {"serviceName": "cluster.ClusterMetaService"}, "loadBalancingConfig": [ { "round_robin": {} } ]}`
 	retryOpts := []grpc_retry.CallOption{
 		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(100 * time.Millisecond)),
 		grpc_retry.WithMax(5),
@@ -181,5 +191,17 @@ func (suite *ShardsTest) setupHealthClient(address string) grpc_health_v1.Health
 }
 
 func (suite *ShardsTest) addNodeC() {
-	go factory.SetupServer("localhost:8084", testData, raftDir, "localhost:8084", "nodeC", "localhost:8085", "localhost:8081", suite.servers, "shardA")
+	go factory.SetupServer(
+		&factory.JetConfig{
+			HostAddr:      "localhost:8084",
+			BadgerDir:     testData,
+			RaftDir:       raftDir,
+			GlobalAdr:     "localhost:8084",
+			NodeName:      "nodeC",
+			GossipAddress: "localhost:8085",
+			RootNode:      "localhost:8081",
+			Server:        suite.servers,
+			ShardId:       "shardA",
+			InMemory:      true,
+		})
 }

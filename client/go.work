@@ -7,4 +7,5 @@ use (
 	../cluster
 	../cluster/proto
 	../factory
+	../util
 )

@@ -52,5 +52,16 @@ func main() {
 		log.Fatal().Msgf("Cannot have null data_dir")
 	}
 	channel := make(chan *factory.Server, 5)
-	factory.SetupServer(*hostAddr, *dataDir, *raftDir, *myAddr, *raftId, *gossipAddress, *rootNode, channel, *shardId)
+	factory.SetupServer(&factory.JetConfig{
+		HostAddr:      *hostAddr,
+		BadgerDir:     *dataDir,
+		RaftDir:       *raftDir,
+		GlobalAdr:     *myAddr,
+		NodeName:      *raftId,
+		GossipAddress: *gossipAddress,
+		RootNode:      *rootNode,
+		Server:        channel,
+		ShardId:       *shardId,
+		InMemory:      false,
+	})
 }
