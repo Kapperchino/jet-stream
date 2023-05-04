@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"github.com/Kapperchino/jet-stream/application/proto/proto"
-	"github.com/alphadose/haxmap"
+	"github.com/Kapperchino/jet-stream/util"
 	"github.com/rs/zerolog/log"
 )
 
 func (j *JetClient) CreateTopic(name string, partitions int) (*proto.CreateTopicResponse, error) {
-	_, exists := j.metaData.topics.Get(name)
-	if exists {
+	val := j.metaData.topics.Get(name)
+	if val != nil {
 		return nil, errors.New("topic exists")
 	}
 	var ids []string
@@ -29,13 +29,13 @@ func (j *JetClient) CreateTopic(name string, partitions int) (*proto.CreateTopic
 	for partitionNum < partitions {
 		partitionsToCreate[curIndex] = append(partitionsToCreate[curIndex], uint64(partitionNum))
 		partitionNum++
-		curIndex = (curIndex + 1) % len(partitionsToCreate)
+		curIndex = (curIndex + 1) % j.shardClients.Len()
 	}
 
 	hash := newHashRing()
 	curIndex = 0
 	var err error
-	partitionsMeta := haxmap.New[uint64, *PartitionMeta]()
+	partitionsMeta := util.NewMap[uint64, *PartitionMeta]()
 	j.shardClients.ForEach(func(s string, client *ShardClient) bool {
 		partitionList := partitionsToCreate[curIndex]
 		curIndex++

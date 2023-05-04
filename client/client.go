@@ -4,7 +4,7 @@ import (
 	"context"
 	proto "github.com/Kapperchino/jet-stream/application/proto/proto"
 	clusterPb "github.com/Kapperchino/jet-stream/cluster/proto/proto"
-	"github.com/alphadose/haxmap"
+	"github.com/Kapperchino/jet-stream/util"
 	"github.com/buraksezer/consistent"
 	"github.com/rs/zerolog/log"
 	"github.com/spaolacci/murmur3"
@@ -14,7 +14,7 @@ import (
 
 type JetClient struct {
 	info         *clusterPb.ClusterInfo
-	shardClients *haxmap.Map[string, *ShardClient]
+	shardClients *util.Map[string, *ShardClient]
 	metaData     *Meta
 }
 
@@ -23,12 +23,12 @@ type ConsumerGroup struct {
 }
 
 type Meta struct {
-	topics         *haxmap.Map[string, *TopicMeta]
-	consumerGroups *haxmap.Map[string, *ConsumerGroup]
+	topics         *util.Map[string, *TopicMeta]
+	consumerGroups *util.Map[string, *ConsumerGroup]
 }
 
 type TopicMeta struct {
-	partitions *haxmap.Map[uint64, *PartitionMeta]
+	partitions *util.Map[uint64, *PartitionMeta]
 	hash       *consistent.Consistent
 }
 
@@ -41,9 +41,9 @@ type PartitionMeta struct {
 type ShardClient struct {
 	leader          string
 	shardId         string
-	memberclients   *haxmap.Map[string, *MemberClient]
+	memberclients   *util.Map[string, *MemberClient]
 	roundRobinIndex int32
-	partitions      *haxmap.Map[uint64, *PartitionMeta]
+	partitions      *util.Map[uint64, *PartitionMeta]
 	buffer          [100]*proto.KeyVal
 }
 
@@ -74,12 +74,12 @@ func New(address string) (*JetClient, error) {
 		log.Err(err).Msgf("Error getting cluster info")
 		return nil, err
 	}
-	shardClients := haxmap.New[string, *ShardClient]()
+	shardClients := util.NewMap[string, *ShardClient]()
 	for shardId, shard := range clusterInfo.Info.ShardMap {
 		shardClient := ShardClient{
 			leader:        shard.LeaderId,
-			memberclients: haxmap.New[string, *MemberClient](),
-			partitions:    haxmap.New[uint64, *PartitionMeta](),
+			memberclients: util.NewMap[string, *MemberClient](),
+			partitions:    util.NewMap[uint64, *PartitionMeta](),
 			shardId:       shardId,
 		}
 		shardClients.Set(shardId, &shardClient)
@@ -97,7 +97,7 @@ func New(address string) (*JetClient, error) {
 			shardClient.memberclients.Set(nodeId, &memberClient)
 		}
 	}
-	metaData := Meta{topics: haxmap.New[string, *TopicMeta](), consumerGroups: haxmap.New[string, *ConsumerGroup]()}
+	metaData := Meta{topics: util.NewMap[string, *TopicMeta](), consumerGroups: util.NewMap[string, *ConsumerGroup]()}
 	shardClients.ForEach(func(shardId string, client *ShardClient) bool {
 		meta, err := client.GetNextMember().messageClient.GetMeta(ctx, &proto.GetMetaRequest{})
 		if err != nil {
@@ -106,10 +106,10 @@ func New(address string) (*JetClient, error) {
 		}
 		for key, topic := range meta.Topics {
 			//updating the map
-			var item, exists = metaData.topics.Get(key)
-			if !exists {
+			var item = metaData.topics.Get(key)
+			if item == nil {
 				topicMeta := &TopicMeta{
-					partitions: haxmap.New[uint64, *PartitionMeta](),
+					partitions: util.NewMap[uint64, *PartitionMeta](),
 					hash:       newHashRing(),
 				}
 				for _, partition := range topic.Partitions {
@@ -161,7 +161,7 @@ type KeyValuePair struct {
 }
 
 func (s *ShardClient) GetLeader() *MemberClient {
-	res, _ := s.memberclients.Get(s.leader)
+	res := s.memberclients.Get(s.leader)
 	return res
 }
 

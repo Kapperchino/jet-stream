@@ -87,13 +87,16 @@ func NewRaft(myID, myAddress string, fsm raft.FSM, raftDir string, inMem bool) (
 	}
 	sdb := BadgerLogStore{LogStore: db}
 
-	fss, err := raft.NewFileSnapshotStore(baseDir, 3, os.Stderr)
-	if err != nil {
-		return nil, nil, fmt.Errorf(`raft.NewFileSnapshotStore(%q, ...): %v`, baseDir, err)
+	var fss raft.SnapshotStore
+	if inMem {
+		fss = raft.NewInmemSnapshotStore()
+	} else {
+		fss, err = raft.NewFileSnapshotStore(baseDir, 3, os.Stderr)
+		if err != nil {
+			return nil, nil, fmt.Errorf(`raft.NewFileSnapshotStore(%q, ...): %v`, baseDir, err)
+		}
 	}
-
 	tm := transport.New(raft.ServerAddress(myAddress), []grpc.DialOption{grpc.WithInsecure()})
-
 	r, err := raft.NewRaft(c, fsm, ldb, sdb, fss, tm.Transport())
 	if err != nil {
 		return nil, nil, fmt.Errorf("raft.NewRaft: %v", err)

@@ -11,8 +11,8 @@ import (
 
 // PublishMessage need to get each partition's location within the cluster, then do consistent hashing with the key to get the partition needed
 func (j *JetClient) PublishMessage(messages []*proto.KeyVal, topic string) (*proto.PublishMessageResponse, error) {
-	meta, exists := j.metaData.topics.Get(topic)
-	if !exists {
+	meta := j.metaData.topics.Get(topic)
+	if meta == nil {
 		return nil, errors.New("topic does not exist")
 	}
 	//get partition to publish to
@@ -27,18 +27,21 @@ func (j *JetClient) PublishMessage(messages []*proto.KeyVal, topic string) (*pro
 	publishGroup, _ := errgroup.WithContext(context.Background())
 	resChannel := make(chan *proto.PublishMessageResponse, len(bucket))
 	for partition, list := range bucket {
-		meta, _ := meta.partitions.Get(partition)
-		client, _ := j.shardClients.Get(meta.shardId)
+		partition := partition
+		meta := meta.partitions.Get(partition)
+		list := list
+		client := j.shardClients.Get(meta.shardId)
 		messageClient := client.GetLeader().messageClient
 		publishGroup.Go(func() error {
+			log.Debug().Msgf("Client publishing batch size of %v to partition: %v", len(list), partition)
 			return PublishMessages(messageClient, topic, partition, list, resChannel)
 		})
 	}
 	err := publishGroup.Wait()
-	close(resChannel)
 	if err != nil {
 		return nil, err
 	}
+	close(resChannel)
 	var msgList []*proto.Message
 	for response := range resChannel {
 		msgList = append(msgList, response.Messages...)

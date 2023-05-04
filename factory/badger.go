@@ -9,8 +9,7 @@ func NewBadger(logDir string, inMem bool) (*badger.DB, error) {
 	if inMem {
 		ops = badger.DefaultOptions("").WithInMemory(true)
 	} else {
-		ops = badger.DefaultOptions(logDir)
-		ops.InMemory = inMem
+		ops = badger.DefaultOptions(logDir).WithInMemory(false)
 	}
 	return badger.Open(ops)
 }

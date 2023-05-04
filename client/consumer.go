@@ -13,8 +13,8 @@ import (
 // CreateConsumerGroup creates multiple consumers on each shard that contains the partitions of the topic, stores
 // the id of each consumer
 func (j *JetClient) CreateConsumerGroup(topicName string) (*proto.CreateConsumerGroupResponse, error) {
-	topic, exist := j.metaData.topics.Get(topicName)
-	if !exist {
+	topic := j.metaData.topics.Get(topicName)
+	if topic == nil {
 		return nil, errors.New("topic does not exist")
 	}
 	partitionSet := mapset.NewSet[string]()
@@ -26,8 +26,8 @@ func (j *JetClient) CreateConsumerGroup(topicName string) (*proto.CreateConsumer
 	id := uuid.NewString()
 	slice := partitionSet.ToSlice()
 	for _, s := range slice {
-		client, exist := j.shardClients.Get(s)
-		if !exist {
+		client := j.shardClients.Get(s)
+		if client == nil {
 			curErr = errors.New("shard needs to be in the meta")
 			return nil, curErr
 		}
@@ -52,12 +52,12 @@ func (j *JetClient) CreateConsumerGroup(topicName string) (*proto.CreateConsumer
 
 // ConsumeMessage need to check if the consumer is created, if true then find
 func (j *JetClient) ConsumeMessage(topicName string, id string) ([]*proto.Message, error) {
-	_, exist := j.metaData.consumerGroups.Get(id)
-	if !exist {
+	val := j.metaData.consumerGroups.Get(id)
+	if val == nil {
 		return nil, errors.New("group does not exist")
 	}
-	topic, exist := j.metaData.topics.Get(topicName)
-	if !exist {
+	topic := j.metaData.topics.Get(topicName)
+	if topic == nil {
 		return nil, errors.New("topic does not exist")
 	}
 	partitionSet := mapset.NewSet[string]()
@@ -73,9 +73,9 @@ func (j *JetClient) ConsumeMessage(topicName string, id string) ([]*proto.Messag
 	consumeGroup, _ := errgroup.WithContext(context.Background())
 	resChannel := make(chan *proto.ConsumeResponse, len(slice))
 	for _, s := range slice {
-		client, exist := j.shardClients.Get(s)
+		client := j.shardClients.Get(s)
 		clients = append(clients, client)
-		if !exist {
+		if client == nil {
 			curErr = errors.New("shard needs to be in the meta")
 			return nil, curErr
 		}

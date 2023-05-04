@@ -1,11 +1,9 @@
 package fsm
 
 import (
-	"fmt"
 	pb "github.com/Kapperchino/jet-stream/application/proto/proto"
 	"github.com/Kapperchino/jet-stream/util"
 	"github.com/dgraph-io/badger/v3"
-	"strconv"
 )
 
 func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, error) {
@@ -15,7 +13,7 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 	}
 	var res []*pb.Message
 	newOffset := uint64(0)
-	key := makeSeqKey(req.Topic, req.Partition)
+	key := makeSeqKey(req.Topic, req.GetPartition())
 	seq, err := f.MessageStore.GetSequence(key, 1000)
 	defer seq.Release()
 	err = f.MessageStore.Update(func(tx *badger.Txn) error {
@@ -55,38 +53,4 @@ func (f *NodeState) Publish(req *pb.Publish, raftIndex uint64) (interface{}, err
 	partition := curTopic.Partitions[req.Partition]
 	partition.Offset = newOffset
 	return res, nil
-}
-
-func (f *NodeState) getLastIndex(topic string, partition int64) (uint64, error) {
-	var lastRaftIndex uint64
-	err := f.MessageStore.View(func(tx *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.Reverse = true
-		opts.PrefetchSize = 100
-		it := tx.NewIterator(opts)
-		defer it.Close()
-		key := topic + "-" + strconv.FormatInt(partition, 10)
-		for it.ValidForPrefix([]byte(key)); it.Valid(); it.Next() {
-			item := it.Item()
-			k := item.Key()
-			err := item.Value(func(v []byte) error {
-				fmt.Printf("key=%s, value=%s\n", k, v)
-				var message pb.Message
-				err := util.DeserializeMessage(v, &message)
-				if err != nil {
-					return err
-				}
-				lastRaftIndex = message.RaftIndex
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return lastRaftIndex, err
-	}
-	return lastRaftIndex, nil
 }
