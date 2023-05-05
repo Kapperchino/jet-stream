@@ -3,10 +3,11 @@ module github.com/Kapperchino/jet-stream/cluster
 go 1.20
 
 require (
+	github.com/Kapperchino/jet-stream/application/proto v0.0.0-20230505163303-df5e695febce
+	github.com/Kapperchino/jet-stream/cluster/proto v0.0.0-20230505163303-df5e695febce
 	github.com/Kapperchino/jet-stream/factory v0.0.0-20230225202306-4020fc0a51bf
 	github.com/Kapperchino/jet-stream/raftadmin v0.0.0-20230225202306-4020fc0a51bf
 	github.com/Kapperchino/jet-stream/util v0.0.0-20230225202306-4020fc0a51bf
-	github.com/alphadose/haxmap v1.2.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/hashicorp/memberlist v0.5.0
 	github.com/hashicorp/raft v1.3.11
@@ -16,6 +17,7 @@ require (
 )
 
 require (
+	github.com/Kapperchino/jet-stream/application v0.0.0-20230505163303-df5e695febce // indirect
 	github.com/Kapperchino/jet-stream/config v0.0.0-20230225202306-4020fc0a51bf // indirect
 	github.com/Kapperchino/jet-stream/leader-rpc v0.0.0-20230225202306-4020fc0a51bf // indirect
 	github.com/Kapperchino/jet-stream/transport v0.0.0-20230225202306-4020fc0a51bf // indirect
@@ -33,6 +35,7 @@ require (
 	github.com/golang/snappy v0.0.3 // indirect
 	github.com/google/btree v1.0.0 // indirect
 	github.com/google/flatbuffers v1.12.1 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-hclog v0.9.1 // indirect
 	github.com/hashicorp/go-immutable-radix v1.0.0 // indirect
@@ -51,7 +54,6 @@ require (
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.6.0 // indirect
-	golang.org/x/exp v0.0.0-20221031165847-c99f073a8326 // indirect
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect

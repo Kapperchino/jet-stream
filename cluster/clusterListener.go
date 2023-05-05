@@ -19,8 +19,8 @@ func (c ClusterListener) NotifyJoin(node *memberlist.Node) {
 
 func (c ClusterListener) NotifyLeave(node *memberlist.Node) {
 	c.Logger().Warn().Msgf("Shard %s has left the cluster")
-	_, exist := c.state.ClusterInfo.Get(node.Name)
-	if !exist {
+	item := c.state.ClusterInfo.Get(node.Name)
+	if item == nil {
 		return
 	}
 	c.state.ClusterInfo.Del(node.Name)

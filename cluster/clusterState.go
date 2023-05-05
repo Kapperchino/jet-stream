@@ -1,7 +1,7 @@
 package cluster
 
 import (
-	"github.com/alphadose/haxmap"
+	"github.com/Kapperchino/jet-stream/util"
 	"github.com/hashicorp/raft"
 	"github.com/rs/zerolog"
 )
@@ -9,7 +9,7 @@ import (
 type ClusterState struct {
 	ShardId       string
 	CurShardState *ShardState
-	ClusterInfo   *haxmap.Map[string, *ShardInfo]
+	ClusterInfo   *util.Map[string, *ShardInfo]
 	Logger        *zerolog.Logger
 }
 
@@ -30,14 +30,14 @@ type ShardInfo struct {
 	shardId   string
 	nodeId    string
 	Leader    string
-	MemberMap *haxmap.Map[string, MemberInfo]
+	MemberMap *util.Map[string, *MemberInfo]
 }
 
 func (c ClusterState) GetShardInfo() *ShardInfo {
 	return c.CurShardState.ShardInfo
 }
 
-func (c ClusterState) getMemberMap() *haxmap.Map[string, MemberInfo] {
+func (c ClusterState) getMemberMap() *util.Map[string, *MemberInfo] {
 	return c.GetShardInfo().MemberMap
 }
 

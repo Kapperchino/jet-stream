@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"testing"
 	"time"
 )
 
@@ -98,6 +99,10 @@ func (suite *ClientTestOneNodeCluster) TestConsumeMessage() {
 	messages, err = suite.client.ConsumeMessage(TOPIC, id.Id)
 	assert.Nil(suite.T(), err)
 	assert.Equal(suite.T(), 0, len(messages))
+}
+
+func TestOneNode(t *testing.T) {
+	suite.Run(t, new(ClientTestOneNodeCluster))
 }
 
 func (suite *ClientTestOneNodeCluster) setupClient(address string) (*client.JetClient, error) {

@@ -3,7 +3,6 @@ package cluster
 import (
 	"github.com/Kapperchino/jet-stream/cluster/proto/proto"
 	"github.com/Kapperchino/jet-stream/util"
-	"github.com/alphadose/haxmap"
 	"github.com/hashicorp/raft"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -25,7 +24,7 @@ func (c ClusterDelegate) NodeMeta(limit int) []byte {
 		LeaderId:         c.ClusterState.getLeader(),
 		ShardId:          c.ClusterState.getShardId(),
 	}
-	shardMap.ForEach(func(s string, info MemberInfo) bool {
+	shardMap.ForEach(func(s string, info *MemberInfo) bool {
 		res.MemberAddressMap[s] = &proto.MemberInfo{
 			NodeId:  info.NodeId,
 			Address: info.Address,
@@ -56,7 +55,7 @@ func (c ClusterDelegate) LocalState(join bool) []byte {
 		ShardId:          c.ClusterState.getShardId(),
 		NodeId:           c.ClusterState.getNodeId(),
 	}
-	shardMap.ForEach(func(s string, info MemberInfo) bool {
+	shardMap.ForEach(func(s string, info *MemberInfo) bool {
 		res.MemberAddressMap[s] = &proto.MemberInfo{
 			NodeId:  info.NodeId,
 			Address: info.Address,
@@ -97,7 +96,7 @@ func (c ClusterDelegate) MergeRemoteState(buf []byte, join bool) {
 			}
 			return
 		}
-		memberMap := haxmap.New[string, MemberInfo]()
+		memberMap := util.NewMap[string, *MemberInfo]()
 		for key, val := range meta.MemberAddressMap {
 			info := MemberInfo{
 				NodeId:   val.NodeId,
@@ -107,7 +106,7 @@ func (c ClusterDelegate) MergeRemoteState(buf []byte, join bool) {
 			if info.NodeId == meta.LeaderId {
 				info.IsLeader = true
 			}
-			memberMap.Set(key, info)
+			memberMap.Set(key, &info)
 		}
 		c.ClusterState.ClusterInfo.Set(meta.ShardId, &ShardInfo{
 			shardId:   meta.ShardId,
@@ -123,8 +122,8 @@ func (c ClusterDelegate) MergeRemoteState(buf []byte, join bool) {
 	if meta.LeaderId != c.ClusterState.getLeader() {
 		//Leader changed need to update everything
 		for key, val := range meta.MemberAddressMap {
-			member, exists := memberMap.Get(key)
-			if exists {
+			member := memberMap.Get(key)
+			if member != nil {
 				//everything is immutable other than  isleader
 				if member.NodeId == meta.LeaderId {
 					member.IsLeader = true
@@ -140,7 +139,7 @@ func (c ClusterDelegate) MergeRemoteState(buf []byte, join bool) {
 				if info.NodeId == meta.LeaderId {
 					info.IsLeader = true
 				}
-				memberMap.Set(key, info)
+				memberMap.Set(key, &info)
 			}
 		}
 		c.ClusterState.GetShardInfo().Leader = meta.LeaderId

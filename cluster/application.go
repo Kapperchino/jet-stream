@@ -3,7 +3,7 @@ package cluster
 import (
 	"context"
 	pb "github.com/Kapperchino/jet-stream/cluster/proto/proto"
-	"github.com/alphadose/haxmap"
+	"github.com/Kapperchino/jet-stream/util"
 	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/raft"
 	"github.com/rs/zerolog"
@@ -19,14 +19,14 @@ type RpcInterface struct {
 
 func InitClusterState(i *RpcInterface, nodeName string, address string, shardId string, logger *zerolog.Logger, raftPtr *raft.Raft) *ClusterState {
 	clusterState := ClusterState{
-		ClusterInfo: haxmap.New[string, *ShardInfo](),
+		ClusterInfo: util.NewMap[string, *ShardInfo](),
 		CurShardState: &ShardState{
 			RaftChan: make(chan raft.Observation, 50),
 			ShardInfo: &ShardInfo{
 				shardId:   shardId,
 				Leader:    "",
 				nodeId:    nodeName,
-				MemberMap: haxmap.New[string, MemberInfo](),
+				MemberMap: util.NewMap[string, *MemberInfo](),
 			},
 			MemberInfo: &MemberInfo{
 				NodeId:   nodeName,
@@ -37,7 +37,7 @@ func InitClusterState(i *RpcInterface, nodeName string, address string, shardId 
 		},
 		Logger: logger,
 	}
-	clusterState.CurShardState.ShardInfo.MemberMap.Set(nodeName, MemberInfo{
+	clusterState.CurShardState.ShardInfo.MemberMap.Set(nodeName, &MemberInfo{
 		NodeId:   nodeName,
 		IsLeader: false,
 		Address:  address,
@@ -59,7 +59,7 @@ func (r RpcInterface) GetShardInfo(_ context.Context, req *pb.GetShardInfoReques
 			NodeId:           r.ClusterState.getNodeId(),
 		},
 	}
-	shardMap.ForEach(func(s string, info MemberInfo) bool {
+	shardMap.ForEach(func(s string, info *MemberInfo) bool {
 		res.GetInfo().MemberAddressMap[s] = &pb.MemberInfo{
 			NodeId:  info.NodeId,
 			Address: info.Address,
@@ -86,9 +86,9 @@ func (r RpcInterface) GetClusterInfo(context.Context, *pb.GetClusterInfoRequest)
 	return res, nil
 }
 
-func toProtoMemberMap(memberMap *haxmap.Map[string, MemberInfo]) map[string]*pb.MemberInfo {
+func toProtoMemberMap(memberMap *util.Map[string, *MemberInfo]) map[string]*pb.MemberInfo {
 	res := make(map[string]*pb.MemberInfo)
-	memberMap.ForEach(func(s string, info MemberInfo) bool {
+	memberMap.ForEach(func(s string, info *MemberInfo) bool {
 		res[s] = &pb.MemberInfo{
 			NodeId:  info.NodeId,
 			Address: info.Address,

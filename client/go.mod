@@ -6,7 +6,7 @@ require (
 	github.com/Kapperchino/jet-stream/application/proto v0.0.0-20230225202306-4020fc0a51bf
 	github.com/Kapperchino/jet-stream/cluster/proto v0.0.0-20230225202306-4020fc0a51bf
 	github.com/Kapperchino/jet-stream/factory v0.0.0-20230225202306-4020fc0a51bf
-	github.com/alphadose/haxmap v1.2.0
+	github.com/Kapperchino/jet-stream/util v0.0.0-20230225202306-4020fc0a51bf
 	github.com/buraksezer/consistent v0.10.0
 	github.com/deckarep/golang-set/v2 v2.1.0
 	github.com/google/uuid v1.3.0
@@ -25,7 +25,7 @@ require (
 	github.com/Kapperchino/jet-stream/leader-rpc v0.0.0-20230225202306-4020fc0a51bf // indirect
 	github.com/Kapperchino/jet-stream/raftadmin v0.0.0-20230225202306-4020fc0a51bf // indirect
 	github.com/Kapperchino/jet-stream/transport v0.0.0-20230225202306-4020fc0a51bf // indirect
-	github.com/Kapperchino/jet-stream/util v0.0.0-20230225202306-4020fc0a51bf // indirect
+	github.com/alphadose/haxmap v1.2.0 // indirect
 	github.com/armon/go-metrics v0.0.0-20190430140413-ec5e00d3c878 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect

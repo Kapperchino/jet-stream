@@ -14,7 +14,7 @@ import (
 
 // Define the suite, and absorb the built-in basic suite
 // functionality from testify - including assertion methods.
-type ClientTestOneShardCluster struct {
+type ClientTestThreeShardCluster struct {
 	suite.Suite
 	client        *client.JetClient
 	address       [3]string
@@ -25,7 +25,7 @@ type ClientTestOneShardCluster struct {
 
 // Make sure that VariableThatShouldStartAtFive is set to five
 // before each test
-func (suite *ClientTestOneShardCluster) SetupSuite() {
+func (suite *ClientTestThreeShardCluster) SetupSuite() {
 	suite.address = [3]string{"localhost:8080", "localhost:8082", "localhost:8084"}
 	suite.gossipAddress = [3]string{"localhost:8081", "localhost:8083", "localhost:8085"}
 	suite.nodeName = [3]string{"nodeA", "nodeB", "nodeC"}
@@ -55,7 +55,7 @@ func (suite *ClientTestOneShardCluster) SetupSuite() {
 			GossipAddress: suite.gossipAddress[1],
 			RootNode:      suite.gossipAddress[0],
 			Server:        suite.servers,
-			ShardId:       "shardA",
+			ShardId:       "shardB",
 			InMemory:      true,
 		})
 	time.Sleep(5 * time.Second)
@@ -69,7 +69,7 @@ func (suite *ClientTestOneShardCluster) SetupSuite() {
 			GossipAddress: suite.gossipAddress[2],
 			RootNode:      suite.gossipAddress[0],
 			Server:        suite.servers,
-			ShardId:       "shardA",
+			ShardId:       "shardC",
 			InMemory:      true,
 		})
 	time.Sleep(5 * time.Second)
@@ -81,7 +81,7 @@ func (suite *ClientTestOneShardCluster) SetupSuite() {
 	time.Sleep(5 * time.Second)
 }
 
-func (suite *ClientTestOneShardCluster) TestPublishMessage() {
+func (suite *ClientTestThreeShardCluster) TestPublishMessage() {
 	const TOPIC = "TestPublishMessage"
 	_, err := suite.client.CreateTopic(TOPIC, 3)
 	assert.Nil(suite.T(), err)
@@ -101,7 +101,7 @@ func (suite *ClientTestOneShardCluster) TestPublishMessage() {
 	assert.NotNil(suite.T(), res)
 }
 
-func (suite *ClientTestOneShardCluster) TestConsumeMessage() {
+func (suite *ClientTestThreeShardCluster) TestConsumeMessage() {
 	const TOPIC = "TestConsumeMessage"
 	_, err := suite.client.CreateTopic(TOPIC, 3)
 	assert.Nil(suite.T(), err)
@@ -132,16 +132,10 @@ func (suite *ClientTestOneShardCluster) TestConsumeMessage() {
 	assert.Equal(suite.T(), 0, len(messages))
 }
 
-// In order for 'go test' to run this suite, we need to create
-// a normal test function and pass our suite to suite.Run
-func TestOneShard(t *testing.T) {
-	suite.Run(t, new(ClientTestOneShardCluster))
+func TestThreeShard(t *testing.T) {
+	suite.Run(t, new(ClientTestThreeShardCluster))
 }
 
-func publishMessages(client *client.JetClient, topic string, messages []*pb.KeyVal) (*pb.PublishMessageResponse, error) {
-	return client.PublishMessage(messages, topic)
-}
-
-func (suite *ClientTestOneShardCluster) setupClient(address string) (*client.JetClient, error) {
+func (suite *ClientTestThreeShardCluster) setupClient(address string) (*client.JetClient, error) {
 	return client.New(address)
 }

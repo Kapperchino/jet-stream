@@ -6,7 +6,7 @@ import (
 )
 
 func (f *NodeState) AddMember(req *pb.AddMember) (interface{}, error) {
-	f.ShardState.ShardInfo.MemberMap.Set(req.NodeId, cluster.MemberInfo{
+	f.ShardState.ShardInfo.MemberMap.Set(req.NodeId, &cluster.MemberInfo{
 		NodeId:   req.NodeId,
 		IsLeader: false,
 		Address:  req.Address,

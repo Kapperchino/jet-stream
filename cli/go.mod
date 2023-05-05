@@ -6,6 +6,7 @@ require (
 	github.com/Kapperchino/jet-stream/application/proto v0.0.0-20230228034331-c4dbf6d65a5e
 	github.com/Kapperchino/jet-stream/client v0.0.0-20230414212817-ff61deea9198
 	github.com/Kapperchino/jet-stream/factory v0.0.0-20230225202306-4020fc0a51bf
+	github.com/Kapperchino/jet-stream/util v0.0.0-20230225202306-4020fc0a51bf
 	github.com/rs/zerolog v1.29.0
 	github.com/stretchr/testify v1.8.1
 	github.com/urfave/cli/v2 v2.25.1
@@ -19,7 +20,6 @@ require (
 	github.com/Kapperchino/jet-stream/leader-rpc v0.0.0-20230225202306-4020fc0a51bf // indirect
 	github.com/Kapperchino/jet-stream/raftadmin v0.0.0-20230225202306-4020fc0a51bf // indirect
 	github.com/Kapperchino/jet-stream/transport v0.0.0-20230225202306-4020fc0a51bf // indirect
-	github.com/Kapperchino/jet-stream/util v0.0.0-20230225202306-4020fc0a51bf // indirect
 	github.com/alphadose/haxmap v1.2.0 // indirect
 	github.com/armon/go-metrics v0.0.0-20190430140413-ec5e00d3c878 // indirect
 	github.com/buraksezer/consistent v0.10.0 // indirect

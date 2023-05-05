@@ -26,6 +26,12 @@ func (m *Map[K, V]) Set(key K, val V) {
 	m.internalMap[key] = val
 }
 
+func (m *Map[K, V]) Del(key K) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	delete(m.internalMap, key)
+}
+
 func (m *Map[K, V]) Len() int {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()

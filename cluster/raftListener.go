@@ -76,13 +76,13 @@ func onPeerUpdate(i *RpcInterface, update raft.PeerObservation) {
 		return
 	}
 	//peer is updated
-	_, exist := i.ClusterState.getMemberMap().Get(string(update.Peer.ID))
-	if exist {
+	item := i.ClusterState.getMemberMap().Get(string(update.Peer.ID))
+	if item == nil {
 		i.Logger.Debug().Msgf("Peer %s already exists, no-op", update.Peer.ID)
 		return
 	}
 	//add peer
-	i.ClusterState.getMemberMap().Set(string(update.Peer.ID), MemberInfo{
+	i.ClusterState.getMemberMap().Set(string(update.Peer.ID), &MemberInfo{
 		NodeId:   string(update.Peer.ID),
 		IsLeader: false,
 		Address:  string(update.Peer.Address),
@@ -107,8 +107,8 @@ func onLeaderUpdate(i *RpcInterface, update raft.LeaderObservation) {
 	//leadership update
 	i.ClusterState.getMemberInfo().IsLeader = false
 	i.ClusterState.GetShardInfo().Leader = string(update.LeaderID)
-	item, exist := i.ClusterState.getMemberMap().Get(string(update.LeaderID))
-	if exist {
+	item := i.ClusterState.getMemberMap().Get(string(update.LeaderID))
+	if item != nil {
 		if item.NodeId == "" {
 			item.NodeId = string(update.LeaderID)
 		}
@@ -118,17 +118,17 @@ func onLeaderUpdate(i *RpcInterface, update raft.LeaderObservation) {
 	//Leader added, we should try to see if we can get a list of servers to add to
 	servers := i.Raft.GetConfiguration().Configuration().Servers
 	for _, server := range servers {
-		_, exist := i.ClusterState.getMemberMap().Get(string(server.ID))
-		if !exist {
+		item := i.ClusterState.getMemberMap().Get(string(server.ID))
+		if item != nil {
 			i.Logger.Info().Msgf("adding server %s", server)
-			i.ClusterState.getMemberMap().Set(string(server.ID), MemberInfo{
+			i.ClusterState.getMemberMap().Set(string(server.ID), &MemberInfo{
 				NodeId:   string(server.ID),
 				IsLeader: false,
 				Address:  string(server.Address),
 			})
 		}
 	}
-	i.ClusterState.getMemberMap().Set(string(update.LeaderID), MemberInfo{
+	i.ClusterState.getMemberMap().Set(string(update.LeaderID), &MemberInfo{
 		NodeId:   string(update.LeaderID),
 		IsLeader: true,
 		Address:  string(update.LeaderAddr),
