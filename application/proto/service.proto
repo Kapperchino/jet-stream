@@ -102,6 +102,7 @@ message CreateConsumerResponse {
 message ConsumeRequest {
   string topic = 1;
   string groupId = 2;
+  map<uint64, uint64> offsets = 3;
 }
 
 message ConsumeResponse {

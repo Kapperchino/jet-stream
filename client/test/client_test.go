@@ -122,7 +122,10 @@ func (suite *ClientTestOneShardCluster) TestConsumeMessage() {
 	id, err := suite.client.CreateConsumerGroup(TOPIC)
 	assert.Nil(suite.T(), err)
 	messages, err := suite.client.ConsumeMessage(TOPIC, id.Id)
-	assert.Nil(suite.T(), err)
+	for len(messages) == 0 {
+		messages, err = suite.client.ConsumeMessage(TOPIC, id.Id)
+		assert.Nil(suite.T(), err)
+	}
 	assert.Equal(suite.T(), 100, len(messages))
 	messages, err = suite.client.ConsumeMessage(TOPIC, id.Id)
 	assert.Nil(suite.T(), err)

@@ -58,12 +58,18 @@ func (f *NodeState) Consume(req *pb.ConsumeRequest) (*pb.ConsumeResponse, error)
 		Messages:  map[uint64]*pb.Messages{},
 		LastIndex: 0,
 	}
-	err := f.MessageStore.View(func(tx *badger.Txn) error {
-		group, err := f.getConsumerGroup(req.GetGroupId(), req.Topic)
-		if err != nil {
-			f.Logger.Err(err).Msgf("Error getting consumer group")
-			return err
-		}
+	group, err := f.getConsumerGroup(req.GetGroupId(), req.Topic)
+	if err != nil {
+		f.Logger.Err(err).Msgf("Error getting consumer group")
+		return nil, err
+	}
+	//offset map in the proto has to be up-to-date or newer
+	err = f.validateAndSyncOffsets(group, req)
+	if err != nil {
+		f.Logger.Err(err).Msgf("Error syncing offsets")
+		return nil, err
+	}
+	err = f.MessageStore.View(func(tx *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchSize = 100
 		it := tx.NewIterator(opts)
@@ -230,5 +236,38 @@ func (f *NodeState) Ack(request *pb.Ack) (interface{}, error) {
 		}
 		return nil
 	})
+	f.Logger.Info().Msgf("Acked consumer group %v", request.GroupId)
 	return &pb.AckConsumeResponse{}, nil
+}
+
+func (f *NodeState) validateAndSyncOffsets(group *pb.ConsumerGroup, req *pb.ConsumeRequest) error {
+	//offset map in the proto has to be up-to-date or newer
+	var needSync = false
+	for _, consumer := range group.Consumers {
+		//updating offset if out of date
+		if consumer.Offset < req.Offsets[consumer.Partition] {
+			consumer.Offset = req.Offsets[consumer.Partition]
+			needSync = true
+		}
+	}
+	if needSync {
+		err := f.MetaStore.Update(func(tx *badger.Txn) error {
+			buf, err := util.SerializeMessage(group)
+			if err != nil {
+				f.Logger.Printf("error encoding consumer group, %s", err)
+				return fmt.Errorf("error encoding Topic, %w", err)
+			}
+			err = tx.Set([]byte("ConsumerGroup-"+req.Topic+"-"+group.Id), buf)
+			if err != nil {
+				f.Logger.Printf("error putting items in bucket, %s", err)
+				return fmt.Errorf("error putting items in bucket, %w", err)
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		f.Logger.Info().Msgf("Updated stale offsets for group %v", group.Id)
+	}
+	return nil
 }

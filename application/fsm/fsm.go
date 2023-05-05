@@ -46,7 +46,7 @@ func (f *NodeState) Restore(r io.ReadCloser) error {
 	return nil
 }
 
-func (s *NodeState) Persist(sink raft.SnapshotSink) error {
+func (f *NodeState) Persist(sink raft.SnapshotSink) error {
 	//_, err := sink.Write([]byte(strings.Join(s.words, "\n")))
 	//if err != nil {
 	//	sink.Cancel()
@@ -55,5 +55,5 @@ func (s *NodeState) Persist(sink raft.SnapshotSink) error {
 	return sink.Close()
 }
 
-func (s *NodeState) Release() {
+func (f *NodeState) Release() {
 }

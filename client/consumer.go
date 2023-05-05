@@ -56,6 +56,10 @@ func (j *JetClient) ConsumeMessage(topicName string, id string) ([]*proto.Messag
 	if val == nil {
 		return nil, errors.New("group does not exist")
 	}
+	offsets := map[uint64]uint64{}
+	for _, consumer := range val.group.Consumers {
+		offsets[consumer.Partition] = consumer.Offset
+	}
 	topic := j.metaData.topics.Get(topicName)
 	if topic == nil {
 		return nil, errors.New("topic does not exist")
@@ -81,7 +85,7 @@ func (j *JetClient) ConsumeMessage(topicName string, id string) ([]*proto.Messag
 		}
 		curClient := client.GetNextMember().messageClient
 		consumeGroup.Go(func() error {
-			return ConsumeMessages(curClient, topicName, id, resChannel)
+			return ConsumeMessages(curClient, topicName, id, resChannel, offsets)
 		})
 	}
 	err := consumeGroup.Wait()
@@ -103,6 +107,9 @@ func (j *JetClient) ConsumeMessage(topicName string, id string) ([]*proto.Messag
 			combinedRes = append(combinedRes, messages.Messages...)
 		}
 	}
+	if len(combinedRes) == 0 {
+		return combinedRes, nil
+	}
 
 	ackGroup, _ := errgroup.WithContext(context.Background())
 	ackChannel := make(chan *proto.AckConsumeResponse, len(slice))
@@ -122,13 +129,18 @@ func (j *JetClient) ConsumeMessage(topicName string, id string) ([]*proto.Messag
 		log.Err(err).Stack().Msgf("Error consuming from group %s", id)
 		return nil, err
 	}
+
+	for _, consumer := range val.group.Consumers {
+		consumer.Offset = partitionMap[consumer.Partition]
+	}
 	return combinedRes, nil
 }
 
-func ConsumeMessages(client proto.MessageServiceClient, topicName string, id string, channel chan *proto.ConsumeResponse) error {
+func ConsumeMessages(client proto.MessageServiceClient, topicName string, id string, channel chan *proto.ConsumeResponse, offsets map[uint64]uint64) error {
 	res, err := client.Consume(context.Background(), &proto.ConsumeRequest{
 		Topic:   topicName,
 		GroupId: id,
+		Offsets: offsets,
 	})
 	if err != nil {
 		log.Err(err).Stack().Msgf("Error consuming from group %s", id)
