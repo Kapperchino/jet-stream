@@ -4,6 +4,7 @@ import (
 	fsmPb "github.com/Kapperchino/jet-stream/application/proto/proto"
 	"github.com/Kapperchino/jet-stream/util"
 	"github.com/hashicorp/raft"
+	"github.com/rs/zerolog/log"
 	"time"
 )
 
@@ -102,6 +103,10 @@ func onLeaderUpdate(i *RpcInterface, update raft.LeaderObservation) {
 		i.Logger.Debug().Msgf("Node %s is already Leader", i.ClusterState.getMemberInfo().NodeId)
 		i.ClusterState.GetShardInfo().Leader = string(update.LeaderID)
 		i.ClusterState.getMemberInfo().IsLeader = true
+		err := i.MemberList.UpdateNode(0)
+		if err != nil {
+			log.Err(err).Msgf("Error when broadcasting change to the current node")
+		}
 		return
 	}
 	//leadership update
@@ -133,6 +138,10 @@ func onLeaderUpdate(i *RpcInterface, update raft.LeaderObservation) {
 		IsLeader: true,
 		Address:  string(update.LeaderAddr),
 	})
+	err := i.MemberList.UpdateNode(0)
+	if err != nil {
+		log.Err(err).Msgf("Error when broadcasting change to the current node")
+	}
 }
 
 func onStateUpdate(i *RpcInterface, state raft.RaftState) {

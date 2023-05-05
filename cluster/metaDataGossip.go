@@ -82,7 +82,7 @@ func (c ClusterDelegate) MergeRemoteState(buf []byte, join bool) {
 	if join {
 		//add node to shard
 		if meta.ShardId == c.ClusterState.getShardId() && meta.NodeId != c.ClusterState.getNodeId() {
-			if meta.LeaderId == c.ClusterState.getLeader() || meta.LeaderId == "" && c.ClusterState.getLeader() != "" {
+			if meta.LeaderId == c.ClusterState.getLeader() {
 				raftPrt := c.ClusterState.getShardState().Raft
 				//add voter
 				address := meta.MemberAddressMap[meta.NodeId].Address
